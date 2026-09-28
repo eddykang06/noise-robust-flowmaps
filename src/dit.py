@@ -1,5 +1,7 @@
+"""Diffusion transformer implememtation"""
+
 # Adapted from the official DiT implementation:
-#   https://github.com/facebookresearch/DiT  (commit <full-sha>, retrieved 2026-09-27)
+#   https://github.com/facebookresearch/DiT  
 #   Peebles & Xie, "Scalable Diffusion Models with Transformers", ICCV 2023.
 
 import torch
