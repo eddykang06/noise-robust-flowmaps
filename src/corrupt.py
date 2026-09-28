@@ -1,0 +1,1 @@
+"""Corruption schedule for image data"""
