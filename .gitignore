@@ -1,0 +1,12 @@
+__pycache__/
+outputs/
+logs/
+slurm_logs/
+*.pt
+*.npz
+.venv/
+.pytest_cache/
+.DS_Store
+.wt/
+research/dashboard/
+.obsidian/
