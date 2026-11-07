@@ -20,8 +20,8 @@ ROOT="$SLURM_SUBMIT_DIR"
 BASE="${BASE_BRANCH:-eddy}"
 cd "$ROOT"
 
-(( $(squeue -h -u "$USER" -n nrfm-agent-host -t RUNNING | wc -l) <= 1 )) \
-  || { echo "another nrfm-agent-host is already running" >&2; exit 1; }
+others=$(squeue -h -u "$USER" -n nrfm-agent-host -t RUNNING -o %i | grep -vx "$SLURM_JOB_ID" || true)
+[[ -z "$others" ]] || { echo "another nrfm-agent-host is already running: $others" >&2; exit 1; }
 hostname > "$HOME/.nrfm-agent-host"
 trap 'sbatch --dependency=afterany:$SLURM_JOB_ID research/bin/agent-host.sbatch; exit 0' USR1
 
