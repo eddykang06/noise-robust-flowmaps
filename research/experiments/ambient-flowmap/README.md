@@ -1,8 +1,8 @@
 ---
 slug: ambient-flowmap
-status: running
-hypothesis:
-kill_criterion:
+status: blocked
+hypothesis: On a 2-D toy with a fraction of samples Gaussian-corrupted, MeanFlow trained with an ambient target gives 1-step samples closer to the clean distribution than MeanFlow on all data or on the clean subset alone, at matched compute.
+kill_criterion: Ambient MeanFlow 1-step energy distance not below the better of flowmap-corrupt and clean-only MeanFlow by more than 2 SE (3 seeds) in at least 2 of 3 noise levels.
 best_metric:
 started: 2026-11-09
 ---
@@ -11,30 +11,95 @@ started: 2026-11-09
 
 ## Hypothesis
 
-<!-- One falsifiable sentence, written from the brief. -->
+On a 2-D toy distribution in which a fraction 1−p of the training samples
+carry additive Gaussian noise of known level σ_n, MeanFlow trained with an
+ambient target produces 1-step samples with lower energy distance to the
+clean distribution than MeanFlow trained on all samples as if clean
+(`flowmap-corrupt`) and than MeanFlow trained on the clean subset alone, at
+matched training forward passes.
 
 ## Kill criterion
 
-<!-- Fill this in before the first run. What result ends this direction?
-     Be specific: a number, a comparison, a wall-clock budget. -->
+Fixed before the first run. Setting: checkerboard toy, unit-variance data,
+p = 0.1 clean, σ_n ∈ {0.1, 0.3, 1.0}, seeds 42–44, 1-step sampling, energy
+distance on 10k samples against fresh clean samples. The direction is dead if,
+in at least 2 of the 3 noise levels, mean ambient-MeanFlow energy distance is
+not lower than the better of `flowmap-corrupt` and clean-only MeanFlow by more
+than 2 standard errors (SE of the difference over the 3 seeds), at matched
+forward passes.
 
 ## Current state
 
-Not started.
+**Blocked before the first run: there is no code to run.** `scripts/train.py`,
+`sample.py`, `eval.py`, `make_data.py`, `configs/*.yaml`, `src/toy.py`,
+`src/corrupt.py`, `src/training.py` and `src/sampling.py` are empty stubs on
+`origin/eddy`, and `research/baseline.md` has no protocol or overrides. No jobs
+have been submitted.
+
+Method design, fixed before any run. MeanFlow (Geng et al., 2025) uses the
+linear path z_t = (1−t)x + tε and learns the average velocity u(z_t, r, t).
+Its regression target is v_t − (t−r)(v_t·∂_z u_θ + ∂_t u_θ), with stop-grad,
+where v_t = ε − x. Sampling is one step: x = ε − u_θ(ε, 0, 1). The ambient
+version follows Daras et al.'s ambient diffusion for noisy data. A noisy
+sample y = x + σ_n η sits at path time t_n = σ_n/(1+σ_n). For t > t_n we
+noise it to z_t = (1−t)y + √(t² − (1−t)²σ_n²) ε′. With c = σ_n²(1−t)²/t²,
+the substitute x̃ = (y − c z_t/(1−t))/(1−c) satisfies E[x̃ | z_t] = E[x | z_t].
+So ṽ = (z_t − x̃)/t is an unbiased estimate of the marginal velocity. The
+MeanFlow target is linear in v_t given z_t, because the JVP is linear in its
+tangent, so the loss keeps its minimiser. Clean samples train at all (r, t).
+Noisy samples train only at t > t_n + δ, where δ bounds the 1/(1−c) variance
+blow-up. Because (t−r)u vanishes at t = r, intervals with r < t_n still need
+velocity below t_n, which only the clean samples supply. That is why the clean
+fraction p matters, and it is the first thing the results should show.
+
+Comparisons: `flowmap-clean` (all samples clean; the upper bound),
+`flowmap-corrupt` (all samples treated as clean) and clean-only MeanFlow (the
+noisy samples discarded). Clean-only MeanFlow is not in `baseline.md`, but
+without it a win over `flowmap-corrupt` cannot be credited to the ambient
+target.
+
+Redirections and events:
+- 2026-11-09: the brief's slug changed from `example` to `ambient-flowmap`.
+  The question and mechanism are unchanged.
+- 2026-11-09: the host's first launch failed because `origin` used HTTPS and
+  the batch job had no credentials. The human approved switching `origin` to
+  SSH, and the branch now tracks `origin/claude/ambient-flowmap`. The session
+  started at 15:38.
 
 ## Results
 
-<!-- Numbers from runs/ambient-flowmap.jsonl: mean ± SE over seeds, against the baseline
-     at matched compute. -->
+None: no runs yet.
 
 ## Next step
 
-Define the kill criterion, then write the smallest experiment that could meet it.
+Once unblocked, implement MeanFlow and the ambient target on the checkerboard
+toy. Then submit a single 1-GPU pilot covering σ_n = 0.3, p = 0.1, seed 42, for
+all four arms. Its purpose is to check that clean MeanFlow reaches a low energy
+distance in 1 step before running the full grid.
 
 ## Blocked on
 
-<!-- Only fill if you need the human. Delete otherwise. -->
+1. **Shared code.** The run needs:
+   - `src/toy.py`: checkerboard and spiral samplers;
+   - `src/corrupt.py`: adds Gaussian noise of level σ_n to a fraction 1−p of
+     samples and returns a per-sample noise level (0 for clean);
+   - `src/training.py`: the MeanFlow loss, with an option for the ambient
+     target above;
+   - `src/sampling.py`: 1-step and k-step flow-map sampling;
+   - `scripts/train.py`, `sample.py` and `eval.py`, where `eval.py` computes
+     energy distance against fresh clean samples;
+   - a toy `configs/*.yaml`;
+   - training code that appends to `research/runs/<slug>.jsonl`.
+
+   Either you write these, or you authorize me to write them on this branch.
+   The second option is faster, and it is what I would propose: about 300
+   lines, with the MeanFlow loss and the ambient target in `src/training.py`.
+2. **Baseline protocol.** `research/baseline.md` needs the overrides for
+   `flowmap-clean` and `flowmap-corrupt`, the update or forward-pass budget,
+   and the metric. I propose energy distance, 10k samples, 1-step and 2-step
+   sampling, seeds 42–44, and adding clean-only MeanFlow as a third baseline
+   row.
 
 ## Dead ends
 
-<!-- One line each. What you tried, why it failed. -->
+None yet.
