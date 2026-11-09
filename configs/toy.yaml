@@ -1,0 +1,43 @@
+# MeanFlow on a clean 2-D checkerboard. `slug` is set per run on the command line.
+# Every budget below is explicit; change it with key=value overrides.
+seed: 42
+out_root: /n/scratch/users/e/edk005/nrfm
+
+data:
+  name: checkerboard
+  n: 10000              # fixed training-set size
+  keep_noisy: true      # false drops corrupted samples (clean-only training)
+
+corruption:
+  name: none            # gaussian: add `sigma`, keep a `clean_frac` fraction clean
+
+model:
+  name: mlp
+  dim: 2
+  hidden: 256
+  depth: 4
+
+objective:
+  name: meanflow
+  ratio: 0.25           # fraction of samples with r != t
+  mu: -0.4              # logit-normal time sampling
+  s: 1.0
+  p: 1.0                # adaptive loss weight 1 / (err + c)^p
+  c: 1.0e-3
+
+sampler:
+  name: flowmap
+  steps: [1, 2]         # each step count is evaluated
+
+metric:
+  name: energy_distance
+  n_samples: 10000
+
+train:
+  steps: 20000
+  batch_size: 1024
+  lr: 1.0e-3
+  ema: 0.999
+  precision: fp32
+  log_every: 1000
+  eval_every: 5000

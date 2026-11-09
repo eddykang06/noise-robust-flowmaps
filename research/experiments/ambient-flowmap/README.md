@@ -58,6 +58,23 @@ noisy samples discarded). Clean-only MeanFlow is not in `baseline.md`, but
 without it a win over `flowmap-corrupt` cannot be credited to the ambient
 target.
 
+Shared pipeline (2026-11-09, at the human's request). The human directed
+that the repo's structure be settled before any direction is implemented. The
+shared code now lives on this branch: `src/` (config, Batch, toys, corruption,
+MLP flow map, flow-matching and MeanFlow objectives, samplers, energy distance,
+training loop), `scripts/` (train, eval, sample, check), `configs/toy.yaml`
+and `jobs/train.sbatch`. The human approved creating conda env `nrfm` as a
+clone of `big_things`. Check job, not yet verified:
+
+```
+#SBATCH --partition=gpu
+#SBATCH --gres=gpu:1
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=16G
+#SBATCH --time=01:00:00
+CMD="python -m scripts.check"    job 59122018, pending
+```
+
 Redirections and events:
 - 2026-11-09: the brief's slug changed from `example` to `ambient-flowmap`.
   The question and mechanism are unchanged.
