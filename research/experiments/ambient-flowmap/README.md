@@ -72,7 +72,7 @@ clone of `big_things`. Check job, not yet verified:
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=16G
 #SBATCH --time=01:00:00
-CMD="python -m scripts.check"    job 59122018, pending
+CMD="python -m scripts.check"    job 59122018, pending since 16:06 (AssocGrpGRESRunMinutes at 17:12)
 ```
 
 Redirections and events:
@@ -95,6 +95,11 @@ all four arms. Its purpose is to check that clean MeanFlow reaches a low energy
 distance in 1 step before running the full grid.
 
 ## Blocked on
+
+0. **GPU allowance.** Check job 59122018 has been pending since 16:06 with
+   reason `AssocGrpGRESRunMinutes`: the group's GPU run-minute limit is used
+   up, apparently by the nine running `learned-cascade` jobs, which are not
+   this direction's. It starts once that allowance frees up.
 
 1. **Shared code.** The run needs:
    - `src/toy.py`: checkerboard and spiral samplers;
