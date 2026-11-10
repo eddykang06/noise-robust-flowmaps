@@ -124,7 +124,13 @@ written. No experiments run until the setup and experimental framework are redes
 GPU test suite on main 20623bc (research-free checkout, asserts no research files), not an
 experiment (gpu, V100, 4 CPU, 2G, 30 min):
 research/experiments/ambient-flowmap/test-main.sbatch    job 59185847: resubmission of
-                                 59171059; running, 33/39 pass so far, none failed.
+                                 59171059; 38/39 pass in 13 min. Fails "learns the checkerboard in
+                                 one step": after 4000 steps (lr 1e-3, EMA 0.99, official iMF
+                                 objective with adaptive weight p = 1) ED@1 0.054 vs 0.0146 for
+                                 N(0,I); ED@2 0.009. Same pattern as the p = 1 degradation found
+                                 earlier with MeanFlow (job 59157265). main's default config does
+                                 not yet give a working 1-step model on the toy; not fixed, since
+                                 no runs happen before the framework is settled.
 
 First experiment (brief): MeanFlow (p = 0) on clean, corrupted (sigma 0.3, 10% clean, noisy
 used as clean) and clean-only checkerboard data, seeds 42-44, 20k steps each:
@@ -140,6 +146,17 @@ research/experiments/ambient-flowmap/exp1.sbatch    job 59163437
 ```
 
 Redirections and events:
+- 2026-11-10 03:35: the brief was revised and is still being written. Mechanism:
+  MeanFlow and ambient diffusion for now, as the lowest-hanging fruit, with more novel
+  methods hoped for later. Synthetic setup: two target 2-D distributions, the two-armed
+  spiral and the checkerboard, under several corruption schemes; the first axis is
+  Gaussian vs non-Gaussian (e.g. masking) corruption. The second axis and the first
+  experiment are blank in the brief, so nothing is acted on beyond recording it.
+- 2026-11-10: the human asked to remove `eddy` and base this branch directly on main.
+  Not done yet: `eddy` carries the briefs (Obsidian pushes there), the agent host's
+  `BASE`, `new-idea`, `redirect` and `refresh-instructions`. Decisions put to the human:
+  where the briefs live, merge vs rebase onto main, where new directions branch from,
+  and the branch name.
 - 2026-11-10: the human chose the toys for the framework: checkerboard and the two-armed
   spiral (`src/toy.py`). Rings, the 2-D Swiss roll and the circle embedded in d dimensions
   were considered and not chosen. Still open: whether the spiral keeps its 0.1 radial jitter.
