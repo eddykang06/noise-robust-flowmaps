@@ -3,9 +3,9 @@
 Official Implementation of "Noise-Robust Flow Maps." In progress.
 
 The flow map is improved MeanFlow (iMF; Geng et al., arXiv:2512.02012). This
-repo wraps the official code: its PyTorch network is vendored unchanged in
-`third_party/imeanflow/`, and `src/objectives/imf.py` ports its JAX training
-objective, keeping the official defaults.
+repo wraps the official code: its PyTorch network files are copied unchanged into
+`src/models/`, and `src/objectives/imf.py` ports its JAX training objective,
+keeping the official defaults.
 
 ## Layout
 
@@ -16,13 +16,14 @@ src/
   data.py      Batch (x [B, ...], sigma, mask, cond) and datasets
   toy.py       2-D toy distributions
   corrupt.py   corruption models -> per-sample sigma
-  models.py    networks net(z, t, h, omega, t_min, t_max, y) -> (u, v)
+  models/      networks net(z, t, h, omega, t_min, t_max, y) -> (u, v):
+               the official iMF DiT (imfDiT.py, embedder.py, torch_models.py)
+               and a toy MLP (mlp.py)
   path.py      the path z_t = (1 - t) x + t e
   objectives/  training objectives (imf)
   sampling.py  iMF sampler
   metrics.py   sample-quality metrics
   training.py  the shared training loop
-third_party/   vendored official iMF network (do not edit)
 scripts/       train, eval, sample: thin CLIs
 tests/         pytest suite; GPU tests are marked `gpu`
 jobs/          Slurm template

@@ -1,23 +1,12 @@
-"""Flow-map networks with the iMF signature
-
-    net(z, t, h, omega, t_min, t_max, y) -> (u, v)
-
-h = t - r, u is the average velocity over [r, t], v the auxiliary velocity head,
-omega and [t_min, t_max] the guidance scale and interval, y the class label
-(`num_classes` is the null class). As in iMF, networks see h but not t.
-
-Images use the official iMF DiT, vendored unchanged in third_party/imeanflow.
-The toy MLP is this repo's analogue for flat data `[B, dim]`, built from the
-same official embedders, RMSNorm, SwiGLU and zero-initialised residual gates;
-conditioning embeddings are summed into the input instead of prepended as tokens.
-"""
+"""Toy iMF network for flat data `[B, dim]`, built from the official iMF embedders,
+RMSNorm, SwiGLU and zero-initialised residual gates; conditioning embeddings are
+summed into the input instead of prepended as tokens."""
 
 import torch
 from torch import nn
 
-from third_party.imeanflow.models import imfDiT
-from third_party.imeanflow.models.embedder import LabelEmbedder, TimestepEmbedder
-from third_party.imeanflow.models.torch_models import RMSNorm, SwiGLUMlp, TorchLinear
+from src.models.embedder import LabelEmbedder, TimestepEmbedder
+from src.models.torch_models import RMSNorm, SwiGLUMlp, TorchLinear
 
 
 class Block(nn.Module):
@@ -66,11 +55,3 @@ class MLP(nn.Module):
         x = self.shared(self.x_embedder(z) + c)
         return self.u_head(x), self.v_head(x)
 
-
-MODELS = {
-    "mlp": MLP,
-    "imfDiT_B_2": imfDiT.imfDiT_B_2,
-    "imfDiT_M_2": imfDiT.imfDiT_M_2,
-    "imfDiT_L_2": imfDiT.imfDiT_L_2,
-    "imfDiT_XL_2": imfDiT.imfDiT_XL_2,
-}
