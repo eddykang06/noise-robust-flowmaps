@@ -12,7 +12,7 @@ export PATH="$HOME/.conda/envs/nrfm/bin:$PATH"
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 NEW="$SLURM_SUBMIT_DIR" OLD=/n/scratch/users/e/edk005/nrfm/equiv-before
 FP=$NEW/research/experiments/ambient-flowmap/fingerprint.py
-(cd $OLD && git log -1 --oneline && python $FP /tmp/fp-old-$SLURM_JOB_ID.json > /dev/null)
-(cd $NEW && git log -1 --oneline && python $FP /tmp/fp-new-$SLURM_JOB_ID.json > /dev/null)
+(cd $OLD && git log -1 --oneline && PYTHONPATH=$OLD python $FP /tmp/fp-old-$SLURM_JOB_ID.json > /dev/null)
+(cd $NEW && git log -1 --oneline && PYTHONPATH=$NEW python $FP /tmp/fp-new-$SLURM_JOB_ID.json > /dev/null)
 diff /tmp/fp-old-$SLURM_JOB_ID.json /tmp/fp-new-$SLURM_JOB_ID.json && echo "FINGERPRINTS IDENTICAL"
 cd $NEW && python -m pytest -v -rs -m "not gpu"
