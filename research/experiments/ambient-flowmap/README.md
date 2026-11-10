@@ -1,6 +1,6 @@
 ---
 slug: ambient-flowmap
-status: blocked
+status: running
 hypothesis: On a 2-D toy with a fraction of samples Gaussian-corrupted, MeanFlow trained with an ambient target gives 1-step samples closer to the clean distribution than MeanFlow on all data or on the clean subset alone, at matched compute.
 kill_criterion: Ambient MeanFlow 1-step energy distance not below the better of flowmap-corrupt and clean-only MeanFlow by more than 2 SE (3 seeds) in at least 2 of 3 noise levels.
 best_metric:
@@ -93,6 +93,12 @@ ED at 20k steps (seed 42): flow matching 0.0005 (50 Euler, stable from 5k); Mean
 ED@1 0.0069, ED@2 0.0182 (erratic); MeanFlow lr 1e-3 p=0 ED@1 0.0021, ED@2 0.0010 (stable);
 MeanFlow lr 1e-4 p=0 ED@1 0.0047, ED@2 0.0042. The adaptive weighting (p = 1) causes the
 degradation, so configs/toy.yaml now uses p = 0. One seed: a diagnosis, not a result.
+CMD="python -m scripts.check"    job 59159091: **all 34 checks pass** (78 s). MeanFlow ED@1 0.0035 and
+                                 flow matching ED@50 0.0036 after 2000 steps vs 0.0146 for N(0,I);
+                                 bitwise reproducibility and resume hold. The 300-step arms only
+                                 check that runs finish (EMA 0.999 still dominated by init).
+
+**The shared pipeline is verified.**
 ```
 
 Redirections and events:
@@ -109,10 +115,10 @@ None: no runs yet.
 
 ## Next step
 
-Once unblocked, implement MeanFlow and the ambient target on the checkerboard
-toy. Then submit a single 1-GPU pilot covering σ_n = 0.3, p = 0.1, seed 42, for
-all four arms. Its purpose is to check that clean MeanFlow reaches a low energy
-distance in 1 step before running the full grid.
+Run the brief's first experiment on the verified pipeline: MeanFlow (p = 0)
+trained on the partially noised checkerboard (sigma = 0.3, clean_frac = 0.1)
+against MeanFlow on the clean data and on the clean subset only, seeds 42-44;
+then add the ambient objective as `src/objectives/ambient_meanflow.py`.
 
 ## Blocked on
 
