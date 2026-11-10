@@ -110,6 +110,10 @@ research-free main candidate (9140d1b). An earlier run (59177592) found float32
 cancellation in the target at small t, fixed by an algebraically equal form.
 At the human's instruction, `main` was fast-forwarded to 9140d1b (code only, no research
 files) before the GPU tests ran. GPU job 59171059 still tests that exact tree.
+2026-11-10: at the human's request, history on main, eddy and this branch was rewritten
+to drop Claude co-author trailers; trees, authors, dates and subjects are unchanged.
+Commit IDs cited here and in `runs/ambient-flowmap.jsonl` before that date are the old
+IDs; `sha-map.txt` maps old -> new (main 9140d1b -> 6f79037).
 
 First experiment (brief): MeanFlow (p = 0) on clean, corrupted (sigma 0.3, 10% clean, noisy
 used as clean) and clean-only checkerboard data, seeds 42-44, 20k steps each:
