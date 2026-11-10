@@ -6,8 +6,9 @@ t_n = sigma / (1 + sigma). For t > t_n it is noised to the same marginal as clea
 data, z_t = (1 - t) y + t sqrt(1 - c) e with c = sigma^2 (1 - t)^2 / t^2. Then
 x_hat = (y - c z_t / (1 - t)) / (1 - c) satisfies E[x_hat | z_t] = E[x | z_t], so
 v_hat = (z_t - x_hat) / t is an unbiased target for the velocity and replaces e - x in
-the iMF loss, whose minimiser it leaves unchanged. Expanding z_t, the target is
-v_hat = sqrt(1 - c) (1 + c / ((1 - t)(1 - c))) e - y, computed in that form to avoid
+the iMF loss, whose minimiser it leaves unchanged under plain squared error
+(norm_p = 0; adaptive weighting makes the minimiser a loss-weighted mean).
+Expanding z_t, the target is v_hat = sqrt(1 - c) (1 + c / ((1 - t)(1 - c))) e - y, computed in that form to avoid
 cancellation at small t. Noisy samples with t <= t_n + t_margin are masked out
 (the target's variance grows as 1 / (1 - c)).
 For sigma = 0 everything reduces to iMF. Unconditional only (no guidance).
