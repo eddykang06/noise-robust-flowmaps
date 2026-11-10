@@ -4,7 +4,7 @@
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=16G
+#SBATCH --mem=2G
 #SBATCH --time=01:30:00
 #SBATCH --output=/n/scratch/users/e/edk005/nrfm/slurm/%x-%j.out
 set -euo pipefail

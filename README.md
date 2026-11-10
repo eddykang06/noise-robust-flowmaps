@@ -56,7 +56,7 @@ python -m pytest                 # tests; GPU tests are skipped without CUDA
 On O2, submit through the gate (see `jobs/train.sbatch`):
 
 ```sh
-research/bin/submit <slug> jobs/train.sbatch \
+DESC="<what the job is for>" research/bin/submit <slug> jobs/train.sbatch \
   --export=ALL,CMD="python -m scripts.train --config configs/toy.yaml slug=<slug> seed=42"
 ```
 

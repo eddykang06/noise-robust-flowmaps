@@ -2,7 +2,7 @@
 # One GPU job running one command from the repo root, in env nrfm. Submit from
 # the worktree root through the gate, passing the command in CMD:
 #
-#   research/bin/submit <slug> jobs/train.sbatch \
+#   DESC="<what the job is for>" research/bin/submit <slug> jobs/train.sbatch \
 #     --export=ALL,CMD="python -m scripts.train --config configs/toy.yaml slug=<slug> seed=42"
 #
 # --export splits on commas and $CMD on spaces, so an override containing either
@@ -11,7 +11,7 @@
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=16G
+#SBATCH --mem=2G         # toy runs peak at ~0.8G (sacct MaxRSS)
 #SBATCH --time=01:00:00
 #SBATCH --output=logs/%x-%j.out
 set -euo pipefail
