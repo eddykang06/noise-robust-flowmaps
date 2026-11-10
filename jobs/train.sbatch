@@ -7,11 +7,12 @@
 #
 # --export splits on commas and $CMD on spaces, so an override containing either
 # belongs in a config file. The header below is the budget submit checks; copy this
-# file into research/experiments/<slug>/ to change it.
+# file into research/experiments/<slug>/ to change it. Toy runs peak at ~0.8G
+# of RAM (sacct MaxRSS); the gate wants about 1.5x the measured peak.
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=2G         # toy runs peak at ~0.8G (sacct MaxRSS)
+#SBATCH --mem=2G
 #SBATCH --time=01:00:00
 #SBATCH --output=logs/%x-%j.out
 set -euo pipefail
