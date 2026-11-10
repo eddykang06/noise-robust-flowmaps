@@ -123,14 +123,26 @@ Redirections and events:
 
 ## Results
 
-None: no runs yet.
+First experiment (job 59163437): MeanFlow (p = 0), checkerboard, 20k steps, energy distance on
+10k samples against fresh clean samples, mean ± SE over seeds 42-44. These are not baseline
+results yet: `research/baseline.md` has no protocol.
+
+| arm | ED@1 | ED@2 |
+|---|---|---|
+| clean | 0.00206 ± 0.00001 | 0.00118 ± 0.00015 |
+| corrupt (sigma 0.3, 10% clean, noisy used as clean) | 0.00273 ± 0.00045 | 0.00230 ± 0.00014 |
+| clean-only (~1k clean samples) | 0.00343 ± 0.00057 | 0.00333 ± 0.00097 |
+
+At sigma = 0.3 the corruption clearly hurts 2-step samples (0.00230 vs 0.00118, about 6 SE),
+but the 1-step gap is inside seed variance. Clean MeanFlow's own 1-step error (0.0021, about
+5x the ED floor for two 10k samples) is about as large as the corruption effect, so 1-step ED
+is a weak probe at this noise level. Clean-only is the worst arm on average but varies most.
 
 ## Next step
 
-Run the brief's first experiment on the verified pipeline: MeanFlow (p = 0)
-trained on the partially noised checkerboard (sigma = 0.3, clean_frac = 0.1)
-against MeanFlow on the clean data and on the clean subset only, seeds 42-44;
-then add the ambient objective as `src/objectives/ambient_meanflow.py`.
+Add the ambient target as `src/objectives/ambient_meanflow.py` (noisy samples
+train only at t > t_n + delta, with the unbiased substitute velocity) and run it
+alongside the three arms above at sigma in {0.1, 0.3, 1.0}, seeds 42-44.
 
 ## Blocked on
 
