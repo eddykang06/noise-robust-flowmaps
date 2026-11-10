@@ -1,8 +1,6 @@
 __pycache__/
-outputs/
 logs/*
 !logs/.gitkeep
-slurm_logs/
 *.pt
 *.npz
 .venv/

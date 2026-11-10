@@ -21,13 +21,16 @@ class Batch:
     mask: Tensor | None = None
     cond: Tensor | None = None
 
+    def map(self, fn) -> "Batch":
+        """Apply `fn` to every tensor field that is set."""
+        return replace(self, **{f.name: fn(v) for f in fields(self)
+                                if (v := getattr(self, f.name)) is not None})
+
     def __getitem__(self, idx) -> "Batch":
-        return replace(self, **{f.name: getattr(self, f.name)[idx]
-                                for f in fields(self) if getattr(self, f.name) is not None})
+        return self.map(lambda v: v[idx])
 
     def to(self, device) -> "Batch":
-        return replace(self, **{f.name: getattr(self, f.name).to(device)
-                                for f in fields(self) if getattr(self, f.name) is not None})
+        return self.map(lambda v: v.to(device))
 
     def __len__(self) -> int:
         return len(self.x)

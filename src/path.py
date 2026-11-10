@@ -1,4 +1,4 @@
-"""The linear noising path z_t = (1 - t) x + t eps, shared by objectives and samplers."""
+"""The linear noising path z_t = (1 - t) x + t e and helpers shared across modules."""
 
 import torch
 from torch import Tensor
@@ -9,9 +9,9 @@ def bcast(t: Tensor, x: Tensor) -> Tensor:
     return t.view(-1, *[1] * (x.ndim - 1))
 
 
-def interpolate(x: Tensor, eps: Tensor, t: Tensor) -> Tensor:
+def interpolate(x: Tensor, e: Tensor, t: Tensor) -> Tensor:
     t = bcast(t, x)
-    return (1 - t) * x + t * eps
+    return (1 - t) * x + t * e
 
 
 def sq_err(pred: Tensor, target: Tensor, mask: Tensor | None) -> Tensor:

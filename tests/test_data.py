@@ -5,12 +5,19 @@ import torch
 
 from src.config import load
 from src.corrupt import gaussian
-from src.data import sample_clean
+from src.data import Batch, sample_clean
 from src.metrics import energy_distance
 from src.toy import TOYS
 from src.training import build_dataset, reference
 
 CORRUPT = ["slug=test", "corruption={name: gaussian, sigma: 0.3, clean_frac: 0.1}"]
+
+
+def test_batch_indexes_set_fields_and_keeps_unset_ones():
+    b = Batch(x=torch.arange(6.0).view(3, 2), sigma=torch.tensor([0.0, 1.0, 2.0]), cond=torch.arange(3))
+    sub = b[torch.tensor([2, 0])]
+    assert torch.equal(sub.x, b.x[[2, 0]]) and torch.equal(sub.cond, torch.tensor([2, 0]))
+    assert sub.mask is None and len(sub) == 2
 
 
 @pytest.mark.parametrize("name", TOYS)

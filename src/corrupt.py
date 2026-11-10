@@ -3,6 +3,7 @@
 import torch
 
 from src.data import Batch
+from src.path import bcast
 
 
 def none(batch: Batch, gen: torch.Generator) -> Batch:
@@ -14,8 +15,7 @@ def gaussian(batch: Batch, gen: torch.Generator, sigma: float, clean_frac: float
     n = len(batch)
     noisy = torch.rand(n, generator=gen) >= clean_frac
     s = noisy.float() * sigma
-    noise = torch.randn(batch.x.shape, generator=gen)
-    x = batch.x + s.view(-1, *[1] * (batch.x.ndim - 1)) * noise
+    x = batch.x + bcast(s, batch.x) * torch.randn(batch.x.shape, generator=gen)
     return Batch(x=x, sigma=s, mask=batch.mask, cond=batch.cond)
 
 

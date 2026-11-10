@@ -80,7 +80,7 @@ def update_ema(ema, net, decay: float):
 
 def git_state() -> dict:
     sha = subprocess.run(["git", "rev-parse", "HEAD"], cwd=REPO, capture_output=True, text=True)
-    dirty = subprocess.run(["git", "status", "--porcelain", "src", "scripts", "configs"],
+    dirty = subprocess.run(["git", "status", "--porcelain", "src", "scripts", "configs", "third_party"],
                            cwd=REPO, capture_output=True, text=True)
     return {"git": sha.stdout.strip(), "dirty": bool(dirty.stdout.strip())}
 
