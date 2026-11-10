@@ -152,11 +152,9 @@ Redirections and events:
   spiral and the checkerboard, under several corruption schemes; the first axis is
   Gaussian vs non-Gaussian (e.g. masking) corruption. The second axis and the first
   experiment are blank in the brief, so nothing is acted on beyond recording it.
-- 2026-11-10: the human asked to remove `eddy` and base this branch directly on main.
-  Not done yet: `eddy` carries the briefs (Obsidian pushes there), the agent host's
-  `BASE`, `new-idea`, `redirect` and `refresh-instructions`. Decisions put to the human:
-  where the briefs live, merge vs rebase onto main, where new directions branch from,
-  and the branch name.
+- 2026-11-10: the human asked to remove `eddy` and base this branch directly on main,
+  then withdrew the request after seeing what depends on `eddy`. The workflow is
+  unchanged; nothing was modified.
 - 2026-11-10: the human chose the toys for the framework: checkerboard and the two-armed
   spiral (`src/toy.py`). Rings, the 2-D Swiss roll and the circle embedded in d dimensions
   were considered and not chosen. Still open: whether the spiral keeps its 0.1 radial jitter.
