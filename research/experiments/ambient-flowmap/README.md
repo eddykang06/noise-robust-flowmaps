@@ -100,6 +100,15 @@ CMD="python -m scripts.check"    job 59159091: **all 34 checks pass** (78 s). Me
 
 **The shared pipeline is verified.**
 
+2026-11-10, at the human's request: the pipeline now wraps the official improved
+MeanFlow (iMF) code. The network is vendored unchanged, and the objective and sampler
+are ported from the official JAX repo. The MeanFlow results below are superseded and
+must be rerun with iMF. Ambient iMF (`src/objectives/ambient_imf.py`) replaces e - x
+with an unbiased target for noisy samples above their noise level. CPU tests job
+59177930: 21/21 ambient + iMF tests pass on this branch; 33/33 non-GPU tests pass in the
+research-free main candidate (9140d1b). An earlier run (59177592) found float32
+cancellation in the target at small t, fixed by an algebraically equal form.
+
 First experiment (brief): MeanFlow (p = 0) on clean, corrupted (sigma 0.3, 10% clean, noisy
 used as clean) and clean-only checkerboard data, seeds 42-44, 20k steps each:
 
@@ -140,9 +149,9 @@ is a weak probe at this noise level. Clean-only is the worst arm on average but 
 
 ## Next step
 
-Add the ambient target as `src/objectives/ambient_meanflow.py` (noisy samples
-train only at t > t_n + delta, with the unbiased substitute velocity) and run it
-alongside the three arms above at sigma in {0.1, 0.3, 1.0}, seeds 42-44.
+Once GPU job 59171059 passes (end-to-end tests on the research-free main candidate),
+push the shared code to eddy and main, then rerun the first experiment with iMF
+(clean / corrupt / clean-only) plus the ambient arm (`ambient.yaml`), seeds 42-44.
 
 ## Blocked on
 
