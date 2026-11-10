@@ -42,7 +42,7 @@ def test_clean_samples_reduce_to_imf():
     torch.manual_seed(0)
     x, e, t = torch.randn(64, 2), torch.randn(64, 2), torch.rand(64)
     z, v_hat = ambient_imf.ambient_noising(x, torch.zeros(64), t, e)
-    assert torch.allclose(z, interpolate(x, e, t)) and torch.allclose(v_hat, e - x, atol=1e-5)
+    assert torch.equal(z, interpolate(x, e, t)) and torch.equal(v_hat, e - x)
 
 
 def mlp():

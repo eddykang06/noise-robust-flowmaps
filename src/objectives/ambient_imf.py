@@ -3,11 +3,13 @@ Daras et al., applied to the iMF velocity regression).
 
 A sample observed as y = x + sigma * eta (sigma = 0 if clean) sits at path time
 t_n = sigma / (1 + sigma). For t > t_n it is noised to the same marginal as clean
-data, z_t = (1 - t) y + sqrt(t^2 - (1 - t)^2 sigma^2) e. With c = sigma^2 (1 - t)^2 / t^2,
+data, z_t = (1 - t) y + t sqrt(1 - c) e with c = sigma^2 (1 - t)^2 / t^2. Then
 x_hat = (y - c z_t / (1 - t)) / (1 - c) satisfies E[x_hat | z_t] = E[x | z_t], so
 v_hat = (z_t - x_hat) / t is an unbiased target for the velocity and replaces e - x in
-the iMF loss, whose minimiser it leaves unchanged. Noisy samples with
-t <= t_n + t_margin are masked out (the target's variance grows as 1 / (1 - c)).
+the iMF loss, whose minimiser it leaves unchanged. Expanding z_t, the target is
+v_hat = sqrt(1 - c) (1 + c / ((1 - t)(1 - c))) e - y, computed in that form to avoid
+cancellation at small t. Noisy samples with t <= t_n + t_margin are masked out
+(the target's variance grows as 1 / (1 - c)).
 For sigma = 0 everything reduces to iMF. Unconditional only (no guidance).
 """
 
@@ -20,11 +22,11 @@ from src.path import bcast, sq_err
 
 def ambient_noising(y, sigma, t, e):
     """z_t from an observation at noise level sigma, and the unbiased velocity target."""
-    t_, s = bcast(t, y), bcast(sigma, y)
-    z = (1 - t_) * y + (t_ ** 2 - (1 - t_) ** 2 * s ** 2).clamp_min(0).sqrt() * e
-    c = s ** 2 * (1 - t_) ** 2 / t_ ** 2
-    x_hat = (y - c * z / (1 - t_)) / (1 - c)
-    return z, (z - x_hat) / t_
+    t_ = bcast(t, y)
+    c = (bcast(sigma, y) * (1 - t_) / t_) ** 2
+    a = (1 - c).clamp_min(0).sqrt()
+    z = (1 - t_) * y + t_ * a * e
+    return z, a * (1 + c / ((1 - t_) * (1 - c))) * e - y
 
 
 def loss(net, batch: Batch, P_mean: float, P_std: float, data_proportion: float,
