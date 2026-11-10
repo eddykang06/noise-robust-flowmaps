@@ -13,5 +13,6 @@ export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 cd /n/scratch/users/e/edk005/nrfm/main-candidate
 nvidia-smi --query-gpu=name,compute_cap --format=csv,noheader
 git log -1 --oneline
-ls research CLAUDE.md .claude 2>&1 | head -3
+for f in research CLAUDE.md .claude; do [ ! -e "$f" ] || { echo "unexpected $f in main"; exit 1; }; done
+echo "no research files"
 python -m pytest -v -rs
