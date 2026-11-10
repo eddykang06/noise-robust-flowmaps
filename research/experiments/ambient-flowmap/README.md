@@ -86,6 +86,13 @@ CMD="python -m scripts.check"    job 59155890: 31/32 pass (bitwise reproducibili
 Diagnostic pilots, configs/toy.yaml (MeanFlow, clean checkerboard, 20k steps), seed 42:
 CMD="python -m scripts.train --config configs/toy.yaml slug=ambient-flowmap seed=42"                     job 59156303
 CMD="python -m scripts.train --config configs/toy.yaml slug=ambient-flowmap seed=42 objective.ratio=0.75" job 59156304
+Both degrade with training: ED@1 0.0069 -> 0.0170 (ratio 0.25) and 0.0091 -> 0.0174 (ratio 0.75)
+from 5k to 20k steps; N(0,I) scores 0.0146.
+research/experiments/ambient-flowmap/diag.sbatch                                          job 59157265
+ED at 20k steps (seed 42): flow matching 0.0005 (50 Euler, stable from 5k); MeanFlow lr 1e-4 p=1
+ED@1 0.0069, ED@2 0.0182 (erratic); MeanFlow lr 1e-3 p=0 ED@1 0.0021, ED@2 0.0010 (stable);
+MeanFlow lr 1e-4 p=0 ED@1 0.0047, ED@2 0.0042. The adaptive weighting (p = 1) causes the
+degradation, so configs/toy.yaml now uses p = 0. One seed: a diagnosis, not a result.
 ```
 
 Redirections and events:

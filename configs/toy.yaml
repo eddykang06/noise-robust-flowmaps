@@ -22,7 +22,8 @@ objective:
   ratio: 0.25           # fraction of samples with r != t
   mu: -0.4              # logit-normal time sampling
   s: 1.0
-  p: 1.0                # adaptive loss weight 1 / (err + c)^p
+  p: 0.0                # adaptive loss weight 1 / (err + c)^p; p = 1 degrades with training
+                        # on this toy (ambient-flowmap jobs 59156303, 59157265)
   c: 1.0e-3
 
 sampler:
