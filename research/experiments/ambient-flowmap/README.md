@@ -117,6 +117,8 @@ IDs; `sha-map.txt` maps old -> new (main 9140d1b -> 6f79037).
 main now at 04df8a6 (models under src/models; 33/33 CPU tests, job 59180764).
 iMF pilot, configs/toy.yaml (official lr 1e-4, EMA 0.9999, p = 1), clean, seed 42:
 research/experiments/ambient-flowmap/pilot-imf.sbatch    job 59181941 (gpu, 2G, 3h)
+2026-11-10, at the human's request: pilot cancelled after 7 s, before any record was
+written. No experiments run until the setup and experimental framework are redesigned.
 
 First experiment (brief): MeanFlow (p = 0) on clean, corrupted (sigma 0.3, 10% clean, noisy
 used as clean) and clean-only checkerboard data, seeds 42-44, 20k steps each:
@@ -158,13 +160,8 @@ is a weak probe at this noise level. Clean-only is the worst arm on average but 
 
 ## Next step
 
-Once GPU job 59171059 passes (end-to-end tests on the research-free main candidate),
-push the shared code to eddy and main, then rerun the first experiment with iMF
-(clean / corrupt / clean-only) plus the ambient arm (`ambient.yaml`), seeds 42-44.
-Then vary the clean fraction, including 0. Prediction: noisy samples constrain
-d/dt[(t - r) u] only for t > t_n, so with no clean data the one-step map (r = 0)
-cannot pin down the integral of v over [0, t_n], and 1-step quality degrades as
-sigma grows. That would make the clean fraction the quantity that matters.
+With the human, design the experimental framework (toys and metrics, arms, budgets,
+evaluation) before running any experiment.
 
 ## Blocked on
 
