@@ -131,6 +131,8 @@ research/experiments/ambient-flowmap/test-main.sbatch    job 59185847: resubmiss
                                  earlier with MeanFlow (job 59157265). main's default config does
                                  not yet give a working 1-step model on the toy; not fixed, since
                                  no runs happen before the framework is settled.
+Full test suite on this branch with norm_p 0 (gpu, 4 CPU, 2G, 30 min, mail BEGIN,END):
+research/experiments/ambient-flowmap/gpu-tests.sbatch    job 59190716: queued.
 
 First experiment (brief): MeanFlow (p = 0) on clean, corrupted (sigma 0.3, 10% clean, noisy
 used as clean) and clean-only checkerboard data, seeds 42-44, 20k steps each:
@@ -152,14 +154,14 @@ Redirections and events:
   spiral and the checkerboard, under several corruption schemes; the first axis is
   Gaussian vs non-Gaussian (e.g. masking) corruption. The second axis and the first
   experiment are blank in the brief, so nothing is acted on beyond recording it.
-- 2026-11-10: the human fixed the adaptive loss weight at the official iMF default,
-  `norm_p: 1.0` (`norm_eps: 0.01`), so the objective matches the released iMF code
-  exactly. The iMF paper writes Eq. (10) as plain L2 and inherits the weighting from
-  MeanFlow (arXiv:2512.02012, App. A); MeanFlow ablates p on ImageNet, where p = 0 is
-  worst (arXiv:2505.13447, Table 1(e)). Caveat: the ambient target is unbiased only
-  under plain L2 (p = 0); with p = 1 the minimiser is a loss-weighted mean, so the
-  claim in `src/objectives/ambient_imf.py`'s docstring holds only for p = 0. Proposed:
-  p = 0 as an explicit arm in the framework, not a default.
+- 2026-11-10: the human set the loss to plain squared error, `norm_p: 0` in
+  `configs/toy.yaml` (fdce3d6), replacing the official iMF default 1.0 that the port had
+  restored. Reasons: it works for MeanFlow on this toy (job 59157265) and keeps the
+  ambient target unbiased; with p = 1 the minimiser is a loss-weighted mean. This is the
+  one stated deviation from iMF's released code (the iMF paper writes Eq. (10) as plain
+  L2 and inherits the weighting from MeanFlow, arXiv:2512.02012 App. A). Against it:
+  MeanFlow's ImageNet ablation has p = 0 worst (arXiv:2505.13447, Table 1(e)). main
+  still has 1.0.
 - 2026-11-10: the human asked to remove `eddy` and base this branch directly on main,
   then withdrew the request after seeing what depends on `eddy`. The workflow is
   unchanged; nothing was modified.
