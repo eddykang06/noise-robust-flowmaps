@@ -109,7 +109,9 @@ with an unbiased target for noisy samples above their noise level. CPU tests job
 research-free main candidate (9140d1b). An earlier run (59177592) found float32
 cancellation in the target at small t, fixed by an algebraically equal form.
 At the human's instruction, `main` was fast-forwarded to 9140d1b (code only, no research
-files) before the GPU tests ran. GPU job 59171059 still tests that exact tree.
+files) before the GPU tests ran. GPU job 59171059 queued ~5 h, then failed in 3 s on main
+20623bc without running any test: its absence check used `ls`, which exits nonzero when
+the files are absent, so `set -e` stopped the job because main was clean. Fixed in 2bbae24.
 2026-11-10: at the human's request, history on main, eddy and this branch was rewritten
 to drop Claude co-author trailers; trees, authors, dates and subjects are unchanged.
 Commit IDs cited here and in `runs/ambient-flowmap.jsonl` before that date are the old
@@ -119,6 +121,10 @@ iMF pilot, configs/toy.yaml (official lr 1e-4, EMA 0.9999, p = 1), clean, seed 4
 research/experiments/ambient-flowmap/pilot-imf.sbatch    job 59181941 (gpu, 2G, 3h)
 2026-11-10, at the human's request: pilot cancelled after 7 s, before any record was
 written. No experiments run until the setup and experimental framework are redesigned.
+GPU test suite on main 20623bc (research-free checkout, asserts no research files), not an
+experiment (gpu, V100, 4 CPU, 2G, 30 min):
+research/experiments/ambient-flowmap/test-main.sbatch    job 59185847: resubmission of
+                                 59171059; running, 33/39 pass so far, none failed.
 
 First experiment (brief): MeanFlow (p = 0) on clean, corrupted (sigma 0.3, 10% clean, noisy
 used as clean) and clean-only checkerboard data, seeds 42-44, 20k steps each:
