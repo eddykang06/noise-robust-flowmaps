@@ -1,0 +1,38 @@
+# Flow matching on the clean checkerboard: trainer control for the MeanFlow diagnostics.
+# Every budget below is explicit; change it with key=value overrides.
+seed: 42
+out_root: /n/scratch/users/e/edk005/nrfm
+
+data:
+  name: checkerboard
+  n: 10000              # fixed training-set size
+  keep_noisy: true      # false drops corrupted samples (clean-only training)
+
+corruption:
+  name: none            # gaussian: add `sigma`, keep a `clean_frac` fraction clean
+
+model:
+  name: mlp
+  dim: 2
+  hidden: 256
+  depth: 4
+
+objective:
+  name: flow_matching
+
+sampler:
+  name: euler
+  steps: [50]
+
+metric:
+  name: energy_distance
+  n_samples: 10000
+
+train:
+  steps: 20000
+  batch_size: 1024
+  lr: 1.0e-3
+  ema: 0.999
+  precision: fp32
+  log_every: 1000
+  eval_every: 5000
