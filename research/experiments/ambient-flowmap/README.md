@@ -132,7 +132,13 @@ research/experiments/ambient-flowmap/test-main.sbatch    job 59185847: resubmiss
                                  not yet give a working 1-step model on the toy; not fixed, since
                                  no runs happen before the framework is settled.
 Full test suite on this branch with norm_p 0 (gpu, 4 CPU, 2G, 30 min, mail BEGIN,END):
-research/experiments/ambient-flowmap/gpu-tests.sbatch    job 59190716: queued.
+research/experiments/ambient-flowmap/gpu-tests.sbatch    job 59190716: 45/46 pass in 13 min
+                                 (peak RAM 1.0 GB). The one-step test fails worse than with
+                                 p = 1: ED@1 0.157 and ED@2 0.028 after 4000 steps (lr 1e-3,
+                                 EMA 0.99), vs 0.054 / 0.009 with p = 1 (59185847) and 0.0146
+                                 for N(0,I). So p = 1 is not what breaks one-step iMF here, and
+                                 p = 0 does not transfer from the old MeanFlow code. Cause unknown;
+                                 the test's shortened lr/EMA/steps are the next suspect.
 
 First experiment (brief): MeanFlow (p = 0) on clean, corrupted (sigma 0.3, 10% clean, noisy
 used as clean) and clean-only checkerboard data, seeds 42-44, 20k steps each:
