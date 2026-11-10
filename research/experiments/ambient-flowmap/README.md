@@ -161,6 +161,10 @@ is a weak probe at this noise level. Clean-only is the worst arm on average but 
 Once GPU job 59171059 passes (end-to-end tests on the research-free main candidate),
 push the shared code to eddy and main, then rerun the first experiment with iMF
 (clean / corrupt / clean-only) plus the ambient arm (`ambient.yaml`), seeds 42-44.
+Then vary the clean fraction, including 0. Prediction: noisy samples constrain
+d/dt[(t - r) u] only for t > t_n, so with no clean data the one-step map (r = 0)
+cannot pin down the integral of v over [0, t_n], and 1-step quality degrades as
+sigma grows. That would make the clean fraction the quantity that matters.
 
 ## Blocked on
 
