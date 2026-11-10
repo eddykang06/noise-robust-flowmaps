@@ -152,6 +152,14 @@ Redirections and events:
   spiral and the checkerboard, under several corruption schemes; the first axis is
   Gaussian vs non-Gaussian (e.g. masking) corruption. The second axis and the first
   experiment are blank in the brief, so nothing is acted on beyond recording it.
+- 2026-11-10: the human fixed the adaptive loss weight at the official iMF default,
+  `norm_p: 1.0` (`norm_eps: 0.01`), so the objective matches the released iMF code
+  exactly. The iMF paper writes Eq. (10) as plain L2 and inherits the weighting from
+  MeanFlow (arXiv:2512.02012, App. A); MeanFlow ablates p on ImageNet, where p = 0 is
+  worst (arXiv:2505.13447, Table 1(e)). Caveat: the ambient target is unbiased only
+  under plain L2 (p = 0); with p = 1 the minimiser is a loss-weighted mean, so the
+  claim in `src/objectives/ambient_imf.py`'s docstring holds only for p = 0. Proposed:
+  p = 0 as an explicit arm in the framework, not a default.
 - 2026-11-10: the human asked to remove `eddy` and base this branch directly on main,
   then withdrew the request after seeing what depends on `eddy`. The workflow is
   unchanged; nothing was modified.
