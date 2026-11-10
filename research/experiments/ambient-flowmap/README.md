@@ -154,6 +154,9 @@ Redirections and events:
   spiral and the checkerboard, under several corruption schemes; the first axis is
   Gaussian vs non-Gaussian (e.g. masking) corruption. The second axis and the first
   experiment are blank in the brief, so nothing is acted on beyond recording it.
+- 2026-11-10: at the human's instruction, `research/CLAUDE.md` on eddy (7f3215e) now
+  requires `--mem` at about 1.5x the last comparable job's measured peak RAM; this
+  direction's test scripts were resized to match (35d0851).
 - 2026-11-10: the human set the loss to plain squared error, `norm_p: 0` in
   `configs/toy.yaml` (fdce3d6), replacing the official iMF default 1.0 that the port had
   restored. Reasons: it works for MeanFlow on this toy (job 59157265) and keeps the
