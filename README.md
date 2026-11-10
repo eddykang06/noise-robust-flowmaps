@@ -1,72 +1,70 @@
 # Noise-Robust Flow Maps
 
-Official Implementation of "Noise-Robust Flow Maps." In progress.
+Official Implementation of "Noise-Robust Flow Maps."
 
-The flow map is improved MeanFlow (iMF; Geng et al., arXiv:2512.02012). This
-repo wraps the official code: its PyTorch network files are copied unchanged into
-`src/models/`, and `src/objectives/imf.py` ports its JAX training objective,
-keeping the official defaults.
-
-## Layout
-
-```
-configs/       one YAML per dataset; every budget explicit
-src/
-  config.py    Config dataclass; YAML + dotted key=value overrides
-  data.py      Batch (x [B, ...], sigma, mask, cond) and datasets
-  toy.py       2-D toy distributions
-  corrupt.py   corruption models -> per-sample sigma
-  models/      networks net(z, t, h, omega, t_min, t_max, y) -> (u, v):
-               the official iMF DiT (imfDiT.py, embedder.py, torch_models.py)
-               and a toy MLP (mlp.py)
-  path.py      the path z_t = (1 - t) x + t e
-  objectives/  training objectives (imf)
-  sampling.py  iMF sampler
-  metrics.py   sample-quality metrics
-  training.py  the shared training loop
-scripts/       train, eval, sample: thin CLIs
-tests/         pytest suite; GPU tests are marked `gpu`
-jobs/          Slurm template
-logs/          Slurm job logs (untracked)
-```
-
-Each component section of a config names its implementation (`name:`) and
-passes the remaining keys as keyword arguments. A new objective is one module
-in `src/objectives/` plus one entry in `OBJECTIVES`.
+Clean training data is scarce in science, but noisy data is not. Noise-robust flow
+maps learn to generate clean samples in one or a few steps, trained directly on noisy
+or corrupted data. Built on improved MeanFlow (Geng et al., 2025) and ambient
+diffusion (Daras et al., 2023).
 
 ## Setup
 
+Requires Python 3.11 and an NVIDIA GPU. The pinned PyTorch build (CUDA 12.6) supports
+V100 and newer.
+
 ```sh
+git clone https://github.com/eddykang06/noise-robust-flowmaps.git
+cd noise-robust-flowmaps
 conda create -n nrfm python=3.11 && conda activate nrfm
 pip install -r requirements.txt
+export NRFM_OUT=/path/to/outputs        # where runs are saved
 ```
 
 ## Usage
 
-Run from the repo root, on a GPU node, in conda env `nrfm`, with `NRFM_OUT`
-set to where run directories should go:
+Run all commands from the repository root.
+
+**Configure.** Each experiment is a YAML file in `configs/` that sets the data,
+corruption, model, objective, sampler, metric and training budget. Any value can be
+overridden on the command line as a dotted `key=value`, for example `train.steps=20000`.
+
+**Train.** Trains a model and evaluates it at fixed intervals. `slug` names the experiment.
 
 ```sh
-export NRFM_OUT=/n/scratch/users/${USER:0:1}/$USER/nrfm
-python -m scripts.train --config configs/toy.yaml slug=<name> seed=42 objective.data_proportion=0.75
-python -m scripts.eval  <run_dir> --steps 1 2 4
+python -m scripts.train --config configs/toy.yaml slug=toy seed=42
+```
+
+The run directory, `$NRFM_OUT/<slug>/<run_id>/`, is printed at the start and holds the
+config and checkpoint. Metrics are appended to `runs/<slug>.jsonl`. Rerunning the same
+command resumes from the last checkpoint, and the same config and seed reproduce
+results exactly on the same hardware.
+
+**Evaluate.** Rescores a run's checkpoint, optionally at other numbers of sampling steps.
+
+```sh
+python -m scripts.eval <run_dir> --steps 1 2
+```
+
+**Sample.** Draws samples from a run's checkpoint and saves them to the run directory
+as `samples-<steps>step.pt`.
+
+```sh
 python -m scripts.sample <run_dir> --n 10000 --steps 1 --seed 0
-python -m pytest                 # tests; GPU tests are skipped without CUDA
 ```
 
-On a Slurm cluster (see `jobs/train.sbatch`):
+**On Slurm.** `jobs/train.sbatch` runs any command above as a single-GPU job in the
+`nrfm` env and writes job logs to `logs/`. Set `NRFM_OUT` before submitting (it defaults
+to O2 scratch space).
 
 ```sh
-sbatch --export=ALL,CMD="python -m scripts.train --config configs/toy.yaml slug=<name> seed=42" \
-  jobs/train.sbatch
+sbatch --export=ALL,CMD="python -m scripts.train --config configs/toy.yaml slug=toy seed=42" jobs/train.sbatch
 ```
 
-The job template sets `NRFM_OUT` to the submitting user's scratch space and
-writes Slurm logs to `logs/`. A run lives in `$NRFM_OUT/<slug>/<run_id>/`. The
-`run_id` is a hash of the config without its paths, so resubmitting the same
-command resumes from the last checkpoint. Each evaluation milestone appends one
-record (git SHA, job, seed, step, wall-clock, metrics, config) to
-`<runs_dir>/<slug>.jsonl`, `runs/` (untracked) by default. Paths in a config may
-use environment variables and `~`; relative ones are taken from the repo root.
-Training is deterministic: the same config and seed reproduce the same metrics
-bitwise on the same hardware.
+## Layout
+
+```
+configs/   experiment configs
+src/       data, corruption, models, objectives, sampling, metrics, training loop
+scripts/   train, evaluate, sample
+jobs/      Slurm job template
+```
