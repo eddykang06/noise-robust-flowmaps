@@ -72,7 +72,9 @@ clone of `big_things`. Check job, not yet verified:
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=16G
 #SBATCH --time=01:00:00
-CMD="python -m scripts.check"    job 59122018, pending since 16:06 (AssocGrpGRESRunMinutes at 17:12)
+CMD="python -m scripts.check"    job 59122018: queued 16:06-20:47 (group GPU limit), ran 16.5 min,
+                                 12 checks passed; failed on a float32 comparison in the check itself
+CMD="python -m scripts.check"    job 59153948: resubmitted 21:06 after the fix
 ```
 
 Redirections and events:
@@ -96,10 +98,10 @@ distance in 1 step before running the full grid.
 
 ## Blocked on
 
-0. **GPU allowance.** Check job 59122018 has been pending since 16:06 with
-   reason `AssocGrpGRESRunMinutes`: the group's GPU run-minute limit is used
+0. **GPU allowance.** Check jobs can wait hours with reason
+   `AssocGrpGRESRunMinutes` (59122018 waited 16:06-20:47): the group's GPU run-minute limit is used
    up, apparently by the nine running `learned-cascade` jobs, which are not
-   this direction's. It starts once that allowance frees up.
+   this direction's.
 
 1. **Shared code.** The run needs:
    - `src/toy.py`: checkerboard and spiral samplers;
