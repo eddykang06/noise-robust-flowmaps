@@ -154,6 +154,11 @@ Redirections and events:
   spiral and the checkerboard, under several corruption schemes; the first axis is
   Gaussian vs non-Gaussian (e.g. masking) corruption. The second axis and the first
   experiment are blank in the brief, so nothing is acted on beyond recording it.
+- 2026-11-10: at the human's instruction, for compute-heavy runs (pretraining from
+  scratch), this branch's `research/bin/submit` limits match learned-cascade's: 5 days
+  per job (the gpu/gpu_quad partition limit, was 12 h) and 64 jobs per direction (was
+  2); still 1 GPU and 8G RAM per job. The account's 12,000 GPU run-minute cap is
+  unchanged.
 - 2026-11-10: at the human's instruction, `research/CLAUDE.md` on eddy (7f3215e) now
   requires `--mem` at about 1.5x the last comparable job's measured peak RAM; this
   direction's test scripts were resized to match (35d0851).
