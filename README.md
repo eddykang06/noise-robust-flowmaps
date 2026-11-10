@@ -19,6 +19,7 @@ src/
   training.py  the shared training loop
 scripts/       train, eval, sample, check: thin CLIs
 jobs/          Slurm template
+logs/          Slurm job logs (untracked)
 ```
 
 Each component section of a config names its implementation (`name:`) and
@@ -27,9 +28,11 @@ in `src/objectives/` plus one entry in `OBJECTIVES`.
 
 ## Usage
 
-Run from the repo root, on a GPU node, in conda env `nrfm`:
+Run from the repo root, on a GPU node, in conda env `nrfm`, with `NRFM_OUT`
+set to where run directories should go:
 
 ```sh
+export NRFM_OUT=/n/scratch/users/${USER:0:1}/$USER/nrfm
 python -m scripts.train --config configs/toy.yaml slug=<slug> seed=42 objective.ratio=0.5
 python -m scripts.eval  <run_dir> --steps 1 2 4
 python -m scripts.sample <run_dir> --n 10000 --steps 1 --seed 0
@@ -43,9 +46,12 @@ research/bin/submit <slug> jobs/train.sbatch \
   --export=ALL,CMD="python -m scripts.train --config configs/toy.yaml slug=<slug> seed=42"
 ```
 
-A run lives in `/n/scratch/users/e/edk005/nrfm/<slug>/<run_id>/`. The
-`run_id` is a hash of the resolved config, so resubmitting the same command
-resumes from the last checkpoint. Each evaluation milestone appends one record
-(git SHA, job, seed, step, wall-clock, metrics, config) to
-`research/runs/<slug>.jsonl`. Training is deterministic: the same config and
-seed reproduce the same metrics bitwise on the same hardware.
+The job template sets `NRFM_OUT` to the submitting user's scratch space and
+writes Slurm logs to `logs/`. A run lives in `$NRFM_OUT/<slug>/<run_id>/`. The
+`run_id` is a hash of the config without its paths, so resubmitting the same
+command resumes from the last checkpoint. Each evaluation milestone appends one
+record (git SHA, job, seed, step, wall-clock, metrics, config) to
+`<runs_dir>/<slug>.jsonl`, `research/runs/` by default. Paths in a config may
+use environment variables and `~`; relative ones are taken from the repo root.
+Training is deterministic: the same config and seed reproduce the same metrics
+bitwise on the same hardware.

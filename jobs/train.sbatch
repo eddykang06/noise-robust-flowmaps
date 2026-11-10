@@ -13,12 +13,14 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=16G
 #SBATCH --time=01:00:00
-#SBATCH --output=/n/scratch/users/e/edk005/nrfm/slurm/%x-%j.out
+#SBATCH --output=logs/%x-%j.out
 set -euo pipefail
 
 # env nrfm has no activation hooks, so PATH alone activates it; loading the
 # conda module instead costs minutes on network storage.
 export PATH="$HOME/.conda/envs/nrfm/bin:$PATH"
+# Run directories default to the submitting user's O2 scratch space.
+export NRFM_OUT="${NRFM_OUT:-/n/scratch/users/${USER:0:1}/$USER/nrfm}"
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
 cd "$SLURM_SUBMIT_DIR"

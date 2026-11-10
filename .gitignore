@@ -1,6 +1,7 @@
 __pycache__/
 outputs/
-logs/
+logs/*
+!logs/.gitkeep
 slurm_logs/
 *.pt
 *.npz

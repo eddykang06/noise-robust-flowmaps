@@ -1,7 +1,8 @@
 # MeanFlow on the checkerboard with 90% of samples corrupted by N(0, 0.3^2) noise.
 # Every budget below is explicit; change it with key=value overrides.
 seed: 42
-out_root: /n/scratch/users/e/edk005/nrfm
+out_root: $NRFM_OUT       # run directories; jobs/train.sbatch sets NRFM_OUT
+runs_dir: research/runs   # <slug>.jsonl evaluation records, relative to the repo root
 
 data:
   name: checkerboard

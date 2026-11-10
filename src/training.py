@@ -3,8 +3,8 @@
 A run lives in `<out_root>/<slug>/<run_id>/` (resolved config and checkpoint).
 At each evaluation milestone the EMA network is sampled, scored against fresh
 clean samples, checkpointed, and one record is appended to
-`research/runs/<slug>.jsonl`. Rerunning the same config resumes from the
-checkpoint.
+`<runs_dir>/<slug>.jsonl`. Rerunning the same config resumes from the
+checkpoint. Relative paths are taken from the repository root.
 """
 
 import json
@@ -28,7 +28,6 @@ from src.objectives import OBJECTIVES
 from src.sampling import SAMPLERS
 
 REPO = Path(__file__).resolve().parents[1]
-RUNS = REPO / "research" / "runs"
 DTYPES = {"fp32": torch.float32, "bf16": torch.bfloat16}
 
 
@@ -68,8 +67,10 @@ def train(cfg: Config):
     device = "cuda"
     os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
     torch.use_deterministic_algorithms(True)
-    run_dir = Path(cfg.out_root) / cfg.slug / cfg.run_id
+    run_dir = REPO / cfg.out_root / cfg.slug / cfg.run_id
+    runs_file = REPO / cfg.runs_dir / f"{cfg.slug}.jsonl"
     run_dir.mkdir(parents=True, exist_ok=True)
+    runs_file.parent.mkdir(parents=True, exist_ok=True)
     (run_dir / "config.yaml").write_text(yaml.safe_dump(asdict(cfg), sort_keys=False))
     torch.manual_seed(cfg.seed)
 
@@ -113,7 +114,7 @@ def train(cfg: Config):
             record = {"run_id": cfg.run_id, "slug": cfg.slug, **git_state(),
                       "job": os.environ.get("SLURM_JOB_ID"), "seed": cfg.seed, "step": step,
                       "wall_clock_s": round(elapsed, 1), "metrics": metrics, "config": asdict(cfg)}
-            with open(RUNS / f"{cfg.slug}.jsonl", "a") as f:
+            with open(runs_file, "a") as f:
                 f.write(json.dumps(record) + "\n")
             print(f"step {step} " + " ".join(f"{k} {v:.5f}" for k, v in metrics.items()), flush=True)
 

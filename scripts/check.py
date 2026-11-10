@@ -4,12 +4,13 @@
 
 Unit checks compare against Gaussian data x ~ N(0, a^2 I), whose flow is known
 in closed form. End-to-end checks train tiny runs in a temporary directory and
-never write to research/runs/. Every check runs; the exit code is non-zero if
+never write to the repository. Every check runs; the exit code is non-zero if
 any failed.
 """
 
 import json
 import math
+import os
 import tempfile
 import time
 import traceback
@@ -81,6 +82,17 @@ def check_config():
     check("config overrides", cfg.objective["ratio"] == 0.5 and cfg.sampler["steps"] == [1, 4])
     check("run_id deterministic", cfg.run_id == load("configs/toy.yaml", args).run_id)
     check("run_id depends on seed", cfg.run_id != replace(cfg, seed=43).run_id)
+    check("run_id ignores output paths",
+          cfg.run_id == replace(cfg, out_root="/elsewhere", runs_dir="other").run_id)
+    saved = os.environ.pop("NRFM_OUT", None)
+    try:
+        load("configs/toy.yaml", args)
+        check("unset path variable raises", False)
+    except ValueError:
+        check("unset path variable raises", True)
+    finally:
+        if saved is not None:
+            os.environ["NRFM_OUT"] = saved
 
 
 def check_data():
@@ -179,7 +191,7 @@ def metrics(tmp: Path, name: str) -> list[dict]:
 
 
 def run(tmp: Path, name: str, extra=()):
-    args = ["slug=check", f"out_root={tmp}/{name}", "train.steps=2000", "train.eval_every=1000",
+    args = ["slug=check", f"out_root={tmp}/{name}", f"runs_dir={tmp}", "train.steps=2000", "train.eval_every=1000",
             "train.log_every=1000", *extra]
     cfg = load("configs/toy.yaml", args)
     training.train(cfg)
@@ -251,7 +263,6 @@ if __name__ == "__main__":
     for fn in (check_config, check_data, check_math):
         section(fn)
     with tempfile.TemporaryDirectory() as tmp:
-        training.RUNS = Path(tmp)
         for fn in (check_reproducible, check_resume, check_arms):
             section(fn, Path(tmp))
     print(f"{len(FAILED)} failed: {FAILED}" if FAILED else "all checks passed")
