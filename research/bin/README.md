@@ -137,7 +137,10 @@ every write.
 
 **The submit gate refuses unbounded jobs.** No `--time` in the sbatch script
 means no submission, no override. On a shared cluster under one username,
-that's the rule that protects your account.
+that's the rule that protects your account. It also refuses a job without
+`--mem` or above 8G: O2 lowers the priority of users whose jobs mostly use under
+half the RAM they request. Each job needs `DESC="<a few words>"` before `submit`: the
+description goes into the job name, and Slurm emails the name when the job ends.
 
 **Instruction refresh is a hook.** `.claude/settings.json` runs
 `refresh-instructions` on SessionStart and on every prompt, including each

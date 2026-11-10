@@ -9,13 +9,14 @@ set -euo pipefail
 
 MAX_MINUTES=720   # per job
 MAX_GPUS=1        # per job
+MAX_MEM_GB=8      # per job; O2 deprioritizes users whose jobs mostly use under half their requested RAM
 MAX_JOBS=2        # queued or running, per direction
 
 SLUG="${1:-}"; shift || true
 SCRIPT="${1:-}"; shift || true
 
 if [[ -z "$SLUG" || -z "$SCRIPT" ]]; then
-  echo "usage: submit <slug> <script.sbatch> [sbatch args...]" >&2
+  echo "usage: DESC=\"<what the job is for>\" submit <slug> <script.sbatch> [sbatch args...]" >&2
   exit 1
 fi
 [[ -f "$SCRIPT" ]] || { echo "no such script: $SCRIPT" >&2; exit 1; }
@@ -27,7 +28,9 @@ hdr() { grep -E "^#SBATCH[[:space:]]+--$1" "$SCRIPT" | tail -n1 | sed -E "s/.*--
 refuse() { echo "  REFUSING: $*" >&2; exit 1; }
 
 PART=$(hdr partition); TIME=$(hdr time); GPUS=$(hdr gres); MEM=$(hdr mem); CPUS=$(hdr cpus-per-task); NODES=$(hdr nodes)
-TAG="nrfm-${SLUG}--$(date -u +%m%d-%H%M)"
+# The job name carries a short description, so Slurm's end-of-job email says what the job was for.
+[[ -n "${DESC:-}" ]] || refuse "no DESC; run as DESC=\"<what the job is for, a few words>\" research/bin/submit ..."
+TAG="nrfm-${SLUG}--$(date -u +%m%d-%H%M)--$(tr -cs 'A-Za-z0-9' '-' <<< "$DESC" | cut -c1-60 | sed 's/^-*//; s/-*$//')"
 
 echo
 echo "  plan   ${PART:-<no partition>} / ${GPUS:-no gpu} / ${CPUS:-?} cpu / ${MEM:-?} / ${TIME:-<NO TIME LIMIT>}"
@@ -60,6 +63,9 @@ if [[ "$GPUS" == gpu* ]]; then
   N_GPU=${GPUS##*:}; [[ "$N_GPU" =~ ^[0-9]+$ ]] || N_GPU=1
 fi
 (( N_GPU <= MAX_GPUS )) || refuse "--gres=$GPUS exceeds the ${MAX_GPUS}-GPU limit."
+[[ "$MEM" =~ ^([0-9]+)([MG]?)B?$ ]] || refuse "--mem=${MEM:-<none>}; set --mem in the header, e.g. --mem=6G."
+MEM_MB=${BASH_REMATCH[1]}; [[ "${BASH_REMATCH[2]}" == M ]] || MEM_MB=$(( MEM_MB * 1024 ))
+(( MEM_MB <= MAX_MEM_GB * 1024 )) || refuse "--mem=$MEM exceeds the ${MAX_MEM_GB}G limit; request about 1.5x the measured peak (sacct -o MaxRSS)."
 [[ -z "$NODES" || "$NODES" == 1 ]] || refuse "--nodes=$NODES; jobs are single-node."
 
 N_JOBS=$(squeue -h -u "$USER" -o %j | grep -c "^nrfm-${SLUG}--" || true)
@@ -68,6 +74,7 @@ N_JOBS=$(squeue -h -u "$USER" -o %j | grep -c "^nrfm-${SLUG}--" || true)
 OUT=$(sbatch --parsable \
         --job-name="$TAG" \
         --comment="agent:nrfm/$SLUG" \
+        --mail-type=END --mail-user=eddykang@college.harvard.edu \
         "$@" "$SCRIPT")
 
 echo "  submitted $OUT"
