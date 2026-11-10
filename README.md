@@ -2,6 +2,11 @@
 
 Official Implementation of "Noise-Robust Flow Maps." In progress.
 
+The flow map is improved MeanFlow (iMF; Geng et al., arXiv:2512.02012). This
+repo wraps the official code: its PyTorch network is vendored unchanged in
+`third_party/imeanflow/`, and `src/objectives/imf.py` ports its JAX training
+objective, keeping the official defaults.
+
 ## Layout
 
 ```
@@ -11,13 +16,15 @@ src/
   data.py      Batch (x [B, ...], sigma, mask, cond) and datasets
   toy.py       2-D toy distributions
   corrupt.py   corruption models -> per-sample sigma
-  models.py    flow-map networks net(z, r, t, cond) -> u
-  path.py      the path z_t = (1 - t) x + t eps
-  objectives/  one module per training objective
-  sampling.py  samplers (flow map, Euler)
+  models.py    networks net(z, t, h, omega, t_min, t_max, y) -> (u, v)
+  path.py      the path z_t = (1 - t) x + t e
+  objectives/  training objectives (imf)
+  sampling.py  iMF sampler
   metrics.py   sample-quality metrics
   training.py  the shared training loop
-scripts/       train, eval, sample, check: thin CLIs
+third_party/   vendored official iMF network (do not edit)
+scripts/       train, eval, sample: thin CLIs
+tests/         pytest suite; GPU tests are marked `gpu`
 jobs/          Slurm template
 logs/          Slurm job logs (untracked)
 ```
@@ -25,6 +32,13 @@ logs/          Slurm job logs (untracked)
 Each component section of a config names its implementation (`name:`) and
 passes the remaining keys as keyword arguments. A new objective is one module
 in `src/objectives/` plus one entry in `OBJECTIVES`.
+
+## Setup
+
+```sh
+conda create -n nrfm python=3.11 && conda activate nrfm
+pip install -r requirements.txt
+```
 
 ## Usage
 
@@ -36,7 +50,7 @@ export NRFM_OUT=/n/scratch/users/${USER:0:1}/$USER/nrfm
 python -m scripts.train --config configs/toy.yaml slug=<slug> seed=42 objective.ratio=0.5
 python -m scripts.eval  <run_dir> --steps 1 2 4
 python -m scripts.sample <run_dir> --n 10000 --steps 1 --seed 0
-python -m scripts.check          # correctness and reproducibility checks
+python -m pytest                 # tests; GPU tests are skipped without CUDA
 ```
 
 On O2, submit through the gate (see `jobs/train.sbatch`):

@@ -1,11 +1,8 @@
 """Training objectives, each `loss(net, batch, **kwargs) -> (scalar, logs)`.
 
-A new objective is one new module here plus one entry below.
+A new objective is one module here plus one entry below.
 """
 
-from src.objectives import flow_matching, meanflow
+from src.objectives import imf
 
-OBJECTIVES = {
-    "flow_matching": flow_matching.loss,
-    "meanflow": meanflow.loss,
-}
+OBJECTIVES = {"imf": imf.loss}

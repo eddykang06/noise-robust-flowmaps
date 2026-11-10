@@ -8,8 +8,7 @@ from pathlib import Path
 
 import torch
 
-from src.sampling import SAMPLERS
-from src.training import load_run, reference
+from src.training import draw, load_run, reference
 
 parser = argparse.ArgumentParser()
 parser.add_argument("run_dir", type=Path)
@@ -22,5 +21,5 @@ cfg, net = load_run(args.run_dir)
 shape = reference(cfg).x.shape[1:]
 gen = torch.Generator("cuda").manual_seed(args.seed)
 eps = torch.randn((args.n, *shape), generator=gen, device="cuda")
-x = SAMPLERS[cfg.sampler["name"]](net, eps, args.steps)
+x = draw(net, cfg, eps, args.steps)
 torch.save(x.cpu(), args.run_dir / f"samples-{args.steps}step.pt")

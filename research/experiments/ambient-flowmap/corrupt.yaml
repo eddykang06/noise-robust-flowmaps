@@ -1,13 +1,15 @@
-# MeanFlow on the checkerboard with 90% of samples corrupted by N(0, 0.3^2) noise.
-# Every budget below is explicit; change it with key=value overrides.
+# iMF on the checkerboard with 90% of samples corrupted by N(0, 0.3^2) noise.
+# Objective, optimizer and EMA values are the official iMF defaults
+# (github.com/Lyy-iiis/imeanflow: configs/default.py, configs/train_config.yml);
+# values marked "toy" are this repo's choices. Every budget is explicit.
 seed: 42
 out_root: $NRFM_OUT       # run directories; jobs/train.sbatch sets NRFM_OUT
 runs_dir: research/runs   # <slug>.jsonl evaluation records, relative to the repo root
 
 data:
   name: checkerboard
-  n: 10000              # fixed training-set size
-  keep_noisy: true      # false drops corrupted samples (clean-only training)
+  n: 10000                # toy: fixed training-set size
+  keep_noisy: true        # false drops corrupted samples (clean-only training)
 
 corruption:
   name: gaussian
@@ -15,33 +17,42 @@ corruption:
   clean_frac: 0.1
 
 model:
-  name: mlp
+  name: mlp               # toy analogue of imfDiT (src/models.py)
   dim: 2
-  hidden: 256
-  depth: 4
+  hidden: 256             # toy
+  depth: 6                # toy: shared blocks = depth - aux_head_depth
+  aux_head_depth: 2       # toy (iMF: 8)
+  num_classes: 0          # unconditional: only the null class
 
 objective:
-  name: meanflow
-  ratio: 0.25           # fraction of samples with r != t
-  mu: -0.4              # logit-normal time sampling
-  s: 1.0
-  p: 0.0                # adaptive loss weight 1 / (err + c)^p; p = 1 degrades with training
-                        # on this toy (ambient-flowmap jobs 59156303, 59157265)
-  c: 1.0e-3
+  name: imf
+  P_mean: -0.4            # logit-normal (t, r) sampling
+  P_std: 1.0
+  data_proportion: 0.5    # share of each batch with r = t
+  cfg_beta: 1.0           # omega density ~ omega^-beta (guidance only)
+  class_dropout_prob: 0.1 # guidance only
+  norm_p: 1.0             # adaptive weight (loss + norm_eps)^norm_p
+  norm_eps: 0.01
+  guidance: false         # unconditional data: omega = 1, null labels
 
 sampler:
-  name: flowmap
-  steps: [1, 2]         # each step count is evaluated
+  name: imf
+  steps: [1, 2]           # each step count is evaluated
+  omega: 1.0
+  t_min: 0.0
+  t_max: 1.0
 
 metric:
   name: energy_distance
   n_samples: 10000
 
 train:
-  steps: 20000
+  steps: 100000           # toy
   batch_size: 1024
-  lr: 1.0e-3
-  ema: 0.999
+  lr: 1.0e-4
+  adam_b2: 0.95
+  warmup_steps: 100       # 10 epochs of the toy set at batch 1024
+  ema: 0.9999
   precision: fp32
   log_every: 1000
-  eval_every: 5000
+  eval_every: 10000

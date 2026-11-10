@@ -7,6 +7,7 @@ clean samples, checkpointed, and one record is appended to
 checkpoint. Relative paths are taken from the repository root.
 """
 
+import copy
 import json
 import os
 import subprocess
@@ -17,7 +18,6 @@ from pathlib import Path
 
 import torch
 import yaml
-from torch.optim.swa_utils import AveragedModel, get_ema_multi_avg_fn
 
 from src.config import Config, kwargs
 from src.corrupt import CORRUPTIONS
@@ -49,11 +49,33 @@ def reference(cfg: Config) -> Batch:
 def evaluate(net, cfg: Config, ref: Batch) -> dict:
     """Scores every sampler step count on the same seeded noise, without
     touching the training RNG."""
-    sampler, metric = SAMPLERS[cfg.sampler["name"]], METRICS[cfg.metric["name"]]
+    metric = METRICS[cfg.metric["name"]]
     gen = torch.Generator(ref.x.device).manual_seed(cfg.seed)
     eps = torch.randn(ref.x.shape, generator=gen, device=ref.x.device)
-    return {f"{cfg.metric['name']}@{steps}": metric(sampler(net, eps, steps, ref.cond), ref.x)
+    return {f"{cfg.metric['name']}@{steps}": metric(draw(net, cfg, eps, steps, ref.cond), ref.x)
             for steps in cfg.sampler["steps"]}
+
+
+def draw(net, cfg: Config, eps, steps: int, y=None):
+    """Samples from `eps` with the configured sampler and its options."""
+    options = {k: v for k, v in kwargs(cfg.sampler).items() if k != "steps"}
+    return SAMPLERS[cfg.sampler["name"]](net, eps, steps, y, **options)
+
+
+def build_optimizer(net, train: dict):
+    """Adam with the official iMF `warmup_const` schedule: linear from 0 over
+    `warmup_steps` (the first update has lr 0, as in optax), then constant."""
+    opt = torch.optim.Adam(net.parameters(), lr=train["lr"], betas=(0.9, train["adam_b2"]))
+    warmup = train["warmup_steps"]
+    sched = torch.optim.lr_scheduler.LambdaLR(opt, lambda s: min(1.0, s / warmup) if warmup else 1.0)
+    return opt, sched
+
+
+@torch.no_grad()
+def update_ema(ema, net, decay: float):
+    """The official update: ema = decay * ema + (1 - decay) * params."""
+    for e, p in zip(ema.parameters(), net.parameters()):
+        e.lerp_(p, 1 - decay)
 
 
 def git_state() -> dict:
@@ -76,8 +98,8 @@ def train(cfg: Config):
 
     data, ref = build_dataset(cfg).to(device), reference(cfg).to(device)
     net = MODELS[cfg.model["name"]](**kwargs(cfg.model)).to(device)
-    ema = AveragedModel(net, multi_avg_fn=get_ema_multi_avg_fn(cfg.train["ema"]))
-    opt = torch.optim.Adam(net.parameters(), lr=cfg.train["lr"])
+    ema = copy.deepcopy(net).requires_grad_(False)  # starts at the initial weights
+    opt, sched = build_optimizer(net, cfg.train)
     loss_fn = partial(OBJECTIVES[cfg.objective["name"]], **kwargs(cfg.objective))
     dtype = DTYPES[cfg.train["precision"]]
 
@@ -88,6 +110,7 @@ def train(cfg: Config):
         net.load_state_dict(state["net"])
         ema.load_state_dict(state["ema"])
         opt.load_state_dict(state["opt"])
+        sched.load_state_dict(state["sched"])
         step, elapsed = state["step"], state["elapsed"]
         torch.cuda.set_rng_state(state["rng"].cpu())
         print(f"resumed {run_dir} at step {step}")
@@ -100,17 +123,19 @@ def train(cfg: Config):
         opt.zero_grad(set_to_none=True)
         loss.backward()
         opt.step()
-        ema.update_parameters(net)
+        sched.step()
+        update_ema(ema, net, cfg.train["ema"])
         step += 1
 
         if step % cfg.train["log_every"] == 0:
             print(f"step {step} loss {loss.item():.4f} "
                   + " ".join(f"{k} {v.item():.4f}" for k, v in logs.items()), flush=True)
         if step % cfg.train["eval_every"] == 0 or step == cfg.train["steps"]:
-            metrics = evaluate(ema.module, cfg, ref)
+            metrics = evaluate(ema, cfg, ref)
             elapsed = time.time() - start
             torch.save({"net": net.state_dict(), "ema": ema.state_dict(), "opt": opt.state_dict(),
-                        "step": step, "elapsed": elapsed, "rng": torch.cuda.get_rng_state()}, ckpt)
+                        "sched": sched.state_dict(), "step": step, "elapsed": elapsed,
+                        "rng": torch.cuda.get_rng_state()}, ckpt)
             record = {"run_id": cfg.run_id, "slug": cfg.slug, **git_state(),
                       "job": os.environ.get("SLURM_JOB_ID"), "seed": cfg.seed, "step": step,
                       "wall_clock_s": round(elapsed, 1), "metrics": metrics, "config": asdict(cfg)}
@@ -122,7 +147,6 @@ def train(cfg: Config):
 def load_run(run_dir: Path) -> tuple[Config, torch.nn.Module]:
     """A finished or in-progress run's config and EMA network."""
     cfg = Config(**yaml.safe_load((run_dir / "config.yaml").read_text()))
-    net = MODELS[cfg.model["name"]](**kwargs(cfg.model))
-    ema = AveragedModel(net, multi_avg_fn=get_ema_multi_avg_fn(cfg.train["ema"]))
+    ema = MODELS[cfg.model["name"]](**kwargs(cfg.model))
     ema.load_state_dict(torch.load(run_dir / "ckpt.pt", map_location="cpu")["ema"])
-    return cfg, ema.module.cuda().eval()
+    return cfg, ema.cuda().eval()
