@@ -2,7 +2,7 @@
 # Non-GPU tests inside the research-free main candidate checkout.
 #SBATCH --partition=short
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=2G
+#SBATCH --mem=1G
 #SBATCH --time=00:20:00
 #SBATCH --output=/n/scratch/users/e/edk005/nrfm/slurm/%x-%j.out
 set -euo pipefail

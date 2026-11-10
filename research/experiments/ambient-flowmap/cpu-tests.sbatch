@@ -3,7 +3,7 @@
 # in the research-free main candidate. GPU tests run separately (job 59171059).
 #SBATCH --partition=short
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=2G
+#SBATCH --mem=1G
 #SBATCH --time=00:30:00
 #SBATCH --output=/n/scratch/users/e/edk005/nrfm/slurm/%x-%j.out
 set -euo pipefail
