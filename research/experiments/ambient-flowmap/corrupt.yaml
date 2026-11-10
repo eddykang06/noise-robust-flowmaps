@@ -31,7 +31,7 @@ objective:
   data_proportion: 0.5    # share of each batch with r = t
   cfg_beta: 1.0           # omega density ~ omega^-beta (guidance only)
   class_dropout_prob: 0.1 # guidance only
-  norm_p: 1.0             # adaptive weight (loss + norm_eps)^norm_p
+  norm_p: 0.0             # plain squared error, as in configs/toy.yaml
   norm_eps: 0.01
   guidance: false         # unconditional data: omega = 1, null labels
 
@@ -47,7 +47,7 @@ metric:
   n_samples: 10000
 
 train:
-  steps: 100000           # toy
+  steps: 50000            # toy: synthetic-experiment budget (human, 2026-11-10)
   batch_size: 1024
   lr: 1.0e-4
   adam_b2: 0.95

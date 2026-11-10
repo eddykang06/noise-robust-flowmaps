@@ -29,7 +29,7 @@ objective:
   P_mean: -0.4            # official iMF (t, r) sampling and weighting
   P_std: 1.0
   data_proportion: 0.5
-  norm_p: 1.0
+  norm_p: 0.0             # plain squared error: keeps the ambient target unbiased
   norm_eps: 0.01
   t_margin: 0.05          # noisy samples train only at t > t_n + t_margin
 
@@ -45,7 +45,7 @@ metric:
   n_samples: 10000
 
 train:
-  steps: 100000           # toy
+  steps: 50000            # toy: synthetic-experiment budget (human, 2026-11-10)
   batch_size: 1024
   lr: 1.0e-4
   adam_b2: 0.95

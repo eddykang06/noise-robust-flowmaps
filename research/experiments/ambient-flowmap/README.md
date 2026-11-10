@@ -160,6 +160,10 @@ Redirections and events:
   spiral and the checkerboard, under several corruption schemes; the first axis is
   Gaussian vs non-Gaussian (e.g. masking) corruption. The second axis and the first
   experiment are blank in the brief, so nothing is acted on beyond recording it.
+- 2026-11-10: the human set every synthetic experiment to 50k training steps for now
+  (was 100k), to be revised as results come in. Applied to `configs/toy.yaml` and this
+  direction's `corrupt.yaml` and `ambient.yaml`, which also now carry `norm_p: 0`
+  (they had been left at 1.0).
 - 2026-11-10: at the human's instruction, for compute-heavy runs (pretraining from
   scratch), this branch's `research/bin/submit` limits match learned-cascade's: 5 days
   per job (the gpu/gpu_quad partition limit, was 12 h) and 64 jobs per direction (was
