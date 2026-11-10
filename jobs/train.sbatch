@@ -16,11 +16,13 @@
 #SBATCH --output=/n/scratch/users/e/edk005/nrfm/slurm/%x-%j.out
 set -eo pipefail  # no -u: conda activate reads unset variables
 
+echo "$(date +%T) setting up env"
 source /etc/profile.d/modules.sh
 module load conda/miniforge3/26.9.4-1
 eval "$(conda shell.bash hook)"
 conda activate nrfm
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
 cd "$SLURM_SUBMIT_DIR"
-echo "$(hostname) $(git rev-parse --short HEAD) $CMD"
+echo "$(date +%T) $(hostname) $(git rev-parse --short HEAD) $CMD"
 $CMD

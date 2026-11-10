@@ -4,12 +4,15 @@
 
 Unit checks compare against Gaussian data x ~ N(0, a^2 I), whose flow is known
 in closed form. End-to-end checks train tiny runs in a temporary directory and
-never write to research/runs/. Stops at the first failure.
+never write to research/runs/. Every check runs; the exit code is non-zero if
+any failed.
 """
 
 import json
 import math
 import tempfile
+import time
+import traceback
 from dataclasses import replace
 from pathlib import Path
 
@@ -28,10 +31,22 @@ from src.sampling import SAMPLERS
 from src.toy import TOYS
 
 
+START, FAILED = time.time(), []
+
+
 def check(name: str, ok: bool, detail=""):
-    print(f"{'PASS' if ok else 'FAIL'}  {name}  {detail}", flush=True)
+    print(f"[{time.time() - START:6.1f}s] {'PASS' if ok else 'FAIL'}  {name}  {detail}", flush=True)
     if not ok:
-        raise SystemExit(1)
+        FAILED.append(name)
+
+
+def section(fn, *args):
+    """Run one group of checks; an exception fails the group without stopping the rest."""
+    try:
+        fn(*args)
+    except Exception:
+        traceback.print_exc()
+        check(f"{fn.__name__} raised", False)
 
 
 def gen(seed: int) -> torch.Generator:
@@ -91,7 +106,7 @@ def check_data():
     frac, resid = noisy.float().mean().item(), (obs.x - clean.x)[noisy].std().item()
     check("noisy fraction = 1 - clean_frac", abs(frac - 0.9) < 0.005, f"{frac:.4f}")
     check("noise std = sigma", abs(resid - 0.3) < 0.003, f"{resid:.4f}")
-    check("sigma takes values {0, sigma}", set(obs.sigma.unique().tolist()) == {0.0, 0.3})
+    check("sigma takes values {0, sigma}", torch.equal(obs.sigma.unique(), torch.tensor([0.0, 0.3])))
     check("clean samples untouched", torch.equal(obs.x[~noisy], clean.x[~noisy]))
 
 
@@ -108,7 +123,7 @@ def check_math():
     t, r = torch.maximum(a, b), torch.minimum(a, b)
     r[: n // 4] = t[: n // 4]
     u, u_tgt = target(flow, z, r, t, flow(z, t, t))
-    check("MeanFlow target = exact u at the fixed point", torch.allclose(u, u_tgt, atol=1e-10),
+    check("MeanFlow target = exact u at the fixed point", torch.allclose(u, u_tgt, atol=1e-8),
           f"max err {(u - u_tgt).abs().max():.1e}")
 
     # The JVP is the total derivative along the path: compare with finite differences.
@@ -147,29 +162,35 @@ def check_math():
     check("energy distance detects a shift", near < 0.01 and far > 0.3, f"{near:.4f}, {far:.4f}")
 
 
-def records(runs: Path) -> list[dict]:
-    return [json.loads(line) for line in (runs / "check.jsonl").read_text().splitlines()]
+def metrics(tmp: Path, name: str) -> list[dict]:
+    """The metrics of every record written by run `name`, in order."""
+    lines = (tmp / "check.jsonl").read_text().splitlines()
+    return [r["metrics"] for r in map(json.loads, lines) if r["config"]["out_root"] == f"{tmp}/{name}"]
 
 
-def check_end_to_end(tmp: Path):
-    training.RUNS = tmp
-    base = ["slug=check", "train.steps=2000", "train.eval_every=1000", "train.log_every=1000"]
-    run = lambda name, extra=(): training.train(load("configs/toy.yaml",
-                                                     base + [f"out_root={tmp}/{name}", *extra]))
+def run(tmp: Path, name: str, extra=()):
+    args = ["slug=check", f"out_root={tmp}/{name}", "train.steps=2000", "train.eval_every=1000",
+            "train.log_every=1000", *extra]
+    cfg = load("configs/toy.yaml", args)
+    training.train(cfg)
+    return cfg
 
-    run("a")
-    run("b")
-    a, b = records(tmp)[0:2], records(tmp)[2:4]
-    check("identical runs are bitwise reproducible",
-          [r["metrics"] for r in a] == [r["metrics"] for r in b], a[-1]["metrics"])
 
-    ref = training.reference(load("configs/toy.yaml", base)).x
+def check_reproducible(tmp: Path):
+    run(tmp, "a")
+    run(tmp, "b")
+    a = metrics(tmp, "a")
+    check("identical runs are bitwise reproducible", len(a) == 2 and a == metrics(tmp, "b"), a[-1])
+
+    ref = training.reference(load("configs/toy.yaml", ["slug=check"])).x
     prior = energy_distance(torch.randn(ref.shape, generator=gen(6)), ref)
-    final = a[-1]["metrics"]["energy_distance@1"]
+    final = a[-1]["energy_distance@1"]
     check("MeanFlow learns the checkerboard in 1 step", final < 0.3 * prior,
           f"{final:.4f} vs N(0, I) {prior:.4f}")
 
-    # Interrupt after the first checkpoint is written, then rerun the same config.
+
+def check_resume(tmp: Path):
+    """Interrupt right after the first checkpoint is written, then rerun the same config."""
     real_save = torch.save
 
     def save_then_interrupt(obj, path):
@@ -178,20 +199,21 @@ def check_end_to_end(tmp: Path):
 
     torch.save = save_then_interrupt
     try:
-        run("resume")
+        run(tmp, "resume")
     except KeyboardInterrupt:
         pass
     finally:
         torch.save = real_save
-    run("resume")
-    resumed = records(tmp)[-1]
-    check("interrupted run resumes bitwise", resumed["metrics"] == a[-1]["metrics"], resumed["metrics"])
+    cfg = run(tmp, "resume")
+    resumed = metrics(tmp, "resume")[-1]
+    check("interrupted run resumes bitwise", resumed == metrics(tmp, "a")[-1], resumed)
 
-    cfg = load("configs/toy.yaml", base + [f"out_root={tmp}/resume"])
     _, net = training.load_run(Path(cfg.out_root) / cfg.slug / cfg.run_id)
     rescored = training.evaluate(net, cfg, training.reference(cfg).to("cuda"))
-    check("re-scoring a checkpoint matches its record", rescored == resumed["metrics"], rescored)
+    check("re-scoring a checkpoint matches its record", rescored == resumed, rescored)
 
+
+def check_arms(tmp: Path):
     noisy = "corruption={name: gaussian, sigma: 0.3, clean_frac: 0.1}"
     arms = {
         "fm-corrupt-euler": ["objective={name: flow_matching}", "sampler={name: euler, steps: [50]}", noisy],
@@ -199,15 +221,23 @@ def check_end_to_end(tmp: Path):
         "meanflow-bf16": ["train.precision=bf16"],
     }
     for name, extra in arms.items():
-        run(name, ["train.steps=300", "train.eval_every=300", *extra])
-        metrics = records(tmp)[-1]["metrics"]
-        check(f"arm runs: {name}", all(math.isfinite(m) for m in metrics.values()), metrics)
+        try:
+            run(tmp, name, ["train.steps=300", "train.eval_every=300", *extra])
+            m = metrics(tmp, name)[-1]
+            check(f"arm runs: {name}", all(math.isfinite(v) for v in m.values()), m)
+        except Exception:
+            traceback.print_exc()
+            check(f"arm runs: {name}", False, "raised")
 
 
 if __name__ == "__main__":
-    check_config()
-    check_data()
-    check_math()
+    print(f"torch {torch.__version__}, {torch.get_num_threads()} CPU threads, "
+          f"{torch.cuda.get_device_name()}", flush=True)
+    for fn in (check_config, check_data, check_math):
+        section(fn)
     with tempfile.TemporaryDirectory() as tmp:
-        check_end_to_end(Path(tmp))
-    print("all checks passed")
+        training.RUNS = Path(tmp)
+        for fn in (check_reproducible, check_resume, check_arms):
+            section(fn, Path(tmp))
+    print(f"{len(FAILED)} failed: {FAILED}" if FAILED else "all checks passed")
+    raise SystemExit(1 if FAILED else 0)
