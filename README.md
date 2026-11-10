@@ -47,17 +47,17 @@ set to where run directories should go:
 
 ```sh
 export NRFM_OUT=/n/scratch/users/${USER:0:1}/$USER/nrfm
-python -m scripts.train --config configs/toy.yaml slug=<slug> seed=42 objective.ratio=0.5
+python -m scripts.train --config configs/toy.yaml slug=<name> seed=42 objective.data_proportion=0.75
 python -m scripts.eval  <run_dir> --steps 1 2 4
 python -m scripts.sample <run_dir> --n 10000 --steps 1 --seed 0
 python -m pytest                 # tests; GPU tests are skipped without CUDA
 ```
 
-On O2, submit through the gate (see `jobs/train.sbatch`):
+On a Slurm cluster (see `jobs/train.sbatch`):
 
 ```sh
-DESC="<what the job is for>" research/bin/submit <slug> jobs/train.sbatch \
-  --export=ALL,CMD="python -m scripts.train --config configs/toy.yaml slug=<slug> seed=42"
+sbatch --export=ALL,CMD="python -m scripts.train --config configs/toy.yaml slug=<name> seed=42" \
+  jobs/train.sbatch
 ```
 
 The job template sets `NRFM_OUT` to the submitting user's scratch space and
@@ -65,7 +65,7 @@ writes Slurm logs to `logs/`. A run lives in `$NRFM_OUT/<slug>/<run_id>/`. The
 `run_id` is a hash of the config without its paths, so resubmitting the same
 command resumes from the last checkpoint. Each evaluation milestone appends one
 record (git SHA, job, seed, step, wall-clock, metrics, config) to
-`<runs_dir>/<slug>.jsonl`, `research/runs/` by default. Paths in a config may
+`<runs_dir>/<slug>.jsonl`, `runs/` (untracked) by default. Paths in a config may
 use environment variables and `~`; relative ones are taken from the repo root.
 Training is deterministic: the same config and seed reproduce the same metrics
 bitwise on the same hardware.

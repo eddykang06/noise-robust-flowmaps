@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
 # One GPU job running one command from the repo root, in env nrfm. Submit from
-# the worktree root through the gate, passing the command in CMD:
+# the repo root, passing the command in CMD:
 #
-#   DESC="<what the job is for>" research/bin/submit <slug> jobs/train.sbatch \
-#     --export=ALL,CMD="python -m scripts.train --config configs/toy.yaml slug=<slug> seed=42"
+#   sbatch --export=ALL,CMD="python -m scripts.train --config configs/toy.yaml slug=<name> seed=42" \
+#     jobs/train.sbatch
 #
 # --export splits on commas and $CMD on spaces, so an override containing either
-# belongs in a config file. The header below is the budget submit checks; copy this
-# file into research/experiments/<slug>/ to change it. Toy runs peak at ~0.8G
-# of RAM (sacct MaxRSS); the gate wants about 1.5x the measured peak.
+# belongs in a config file. Copy this file to change the resources below; toy runs
+# peak at ~0.8G of RAM (sacct -o MaxRSS).
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=4

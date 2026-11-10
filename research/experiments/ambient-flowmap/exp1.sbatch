@@ -15,7 +15,7 @@ nvidia-smi --query-gpu=name,compute_cap --format=csv,noheader
 
 D=research/experiments/ambient-flowmap
 for seed in 42 43 44; do
-  python -m scripts.train --config configs/toy.yaml slug=ambient-flowmap seed=$seed
+  python -m scripts.train --config configs/toy.yaml slug=ambient-flowmap seed=$seed runs_dir=research/runs
   python -m scripts.train --config $D/corrupt.yaml slug=ambient-flowmap seed=$seed
   python -m scripts.train --config $D/corrupt.yaml slug=ambient-flowmap seed=$seed data.keep_noisy=false
 done

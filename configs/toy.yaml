@@ -4,7 +4,7 @@
 # values marked "toy" are this repo's choices. Every budget is explicit.
 seed: 42
 out_root: $NRFM_OUT       # run directories; jobs/train.sbatch sets NRFM_OUT
-runs_dir: research/runs   # <slug>.jsonl evaluation records, relative to the repo root
+runs_dir: runs            # <slug>.jsonl evaluation records, relative to the repo root
 
 data:
   name: checkerboard
