@@ -2,7 +2,7 @@
 
 Official Implementation of "Noise-Robust Flow Maps."
 
-Clean training data is scarce in science, but noisy data is not. Noise-robust flow
+Clean training data is scarce in science. Noise-robust flow
 maps learn to generate clean samples in one or a few steps, trained directly on noisy
 or corrupted data. Built on improved MeanFlow (Geng et al., 2025) and ambient
 diffusion (Daras et al., 2023).
