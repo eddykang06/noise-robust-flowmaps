@@ -16,7 +16,7 @@ SLUG="${1:-}"; shift || true
 SCRIPT="${1:-}"; shift || true
 
 if [[ -z "$SLUG" || -z "$SCRIPT" ]]; then
-  echo "usage: submit <slug> <script.sbatch> [sbatch args...]" >&2
+  echo "usage: DESC=\"<what the job is for>\" submit <slug> <script.sbatch> [sbatch args...]" >&2
   exit 1
 fi
 [[ -f "$SCRIPT" ]] || { echo "no such script: $SCRIPT" >&2; exit 1; }
@@ -28,7 +28,9 @@ hdr() { grep -E "^#SBATCH[[:space:]]+--$1" "$SCRIPT" | tail -n1 | sed -E "s/.*--
 refuse() { echo "  REFUSING: $*" >&2; exit 1; }
 
 PART=$(hdr partition); TIME=$(hdr time); GPUS=$(hdr gres); MEM=$(hdr mem); CPUS=$(hdr cpus-per-task); NODES=$(hdr nodes)
-TAG="nrfm-${SLUG}--$(date -u +%m%d-%H%M)"
+# The job name carries a short description, so Slurm's end-of-job email says what the job was for.
+[[ -n "${DESC:-}" ]] || refuse "no DESC; run as DESC=\"<what the job is for, a few words>\" research/bin/submit ..."
+TAG="nrfm-${SLUG}--$(date -u +%m%d-%H%M)--$(tr -cs 'A-Za-z0-9' '-' <<< "$DESC" | cut -c1-60 | sed 's/^-*//; s/-*$//')"
 
 echo
 echo "  plan   ${PART:-<no partition>} / ${GPUS:-no gpu} / ${CPUS:-?} cpu / ${MEM:-?} / ${TIME:-<NO TIME LIMIT>}"
@@ -72,6 +74,7 @@ N_JOBS=$(squeue -h -u "$USER" -o %j | grep -c "^nrfm-${SLUG}--" || true)
 OUT=$(sbatch --parsable \
         --job-name="$TAG" \
         --comment="agent:nrfm/$SLUG" \
+        --mail-type=END --mail-user=eddykang@college.harvard.edu \
         "$@" "$SCRIPT")
 
 echo "  submitted $OUT"
