@@ -5,11 +5,10 @@ import pytest
 import torch
 
 from src.data import Batch
-from src.models import MLP
+from src.models import MLP, imfDiT
 from src.objectives import imf
-from third_party.imeanflow.models import imfDiT
 
-VENDORED = Path(__file__).resolve().parents[1] / "third_party" / "imeanflow" / "models"
+VENDORED = Path(__file__).resolve().parents[1] / "src" / "models"
 UPSTREAM_SHA256 = {
     "imfDiT.py": "9e607b251e58264403d61574fb99ed86dbe3e5fbc4eb21aa38f8dcad14c64309",
     "embedder.py": "e8975428281faea5cb05b807a408c65609628230ca34dfad01dd84d46fc5d676",
