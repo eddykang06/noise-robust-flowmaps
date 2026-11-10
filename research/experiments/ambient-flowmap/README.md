@@ -140,6 +140,9 @@ research/experiments/ambient-flowmap/exp1.sbatch    job 59163437
 ```
 
 Redirections and events:
+- 2026-11-10: the human chose the toys for the framework: checkerboard and the two-armed
+  spiral (`src/toy.py`). Rings, the 2-D Swiss roll and the circle embedded in d dimensions
+  were considered and not chosen. Still open: whether the spiral keeps its 0.1 radial jitter.
 - 2026-11-09: the brief's slug changed from `example` to `ambient-flowmap`.
   The question and mechanism are unchanged.
 - 2026-11-09: the host's first launch failed because `origin` used HTTPS and
@@ -166,8 +169,9 @@ is a weak probe at this noise level. Clean-only is the worst arm on average but 
 
 ## Next step
 
-With the human, design the experimental framework (toys and metrics, arms, budgets,
-evaluation) before running any experiment.
+With the human, finish the experimental framework (toys chosen: checkerboard and
+two-armed spiral; still open: spiral jitter, metrics, arms, budgets, evaluation) before
+running any experiment.
 
 ## Blocked on
 
