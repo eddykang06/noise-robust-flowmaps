@@ -99,6 +99,18 @@ CMD="python -m scripts.check"    job 59159091: **all 34 checks pass** (78 s). Me
                                  check that runs finish (EMA 0.999 still dominated by init).
 
 **The shared pipeline is verified.**
+
+First experiment (brief): MeanFlow (p = 0) on clean, corrupted (sigma 0.3, 10% clean, noisy
+used as clean) and clean-only checkerboard data, seeds 42-44, 20k steps each:
+
+```
+#SBATCH --partition=gpu
+#SBATCH --gres=gpu:1
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=16G
+#SBATCH --time=01:30:00
+research/experiments/ambient-flowmap/exp1.sbatch    job 59163437
+```
 ```
 
 Redirections and events:
