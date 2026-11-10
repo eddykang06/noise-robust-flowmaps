@@ -1,0 +1,56 @@
+# Ambient iMF on the checkerboard with 90% of samples corrupted by N(0, 0.3^2) noise.
+# Objective, optimizer and EMA values are the official iMF defaults
+# (github.com/Lyy-iiis/imeanflow: configs/default.py, configs/train_config.yml);
+# values marked "toy" are this repo's choices. Every budget is explicit.
+seed: 42
+out_root: $NRFM_OUT       # run directories; jobs/train.sbatch sets NRFM_OUT
+runs_dir: research/runs   # <slug>.jsonl evaluation records, relative to the repo root
+
+data:
+  name: checkerboard
+  n: 10000                # toy: fixed training-set size
+  keep_noisy: true        # false drops corrupted samples (clean-only training)
+
+corruption:
+  name: gaussian
+  sigma: 0.3
+  clean_frac: 0.1
+
+model:
+  name: mlp               # toy analogue of imfDiT (src/models.py)
+  dim: 2
+  hidden: 256             # toy
+  depth: 6                # toy: shared blocks = depth - aux_head_depth
+  aux_head_depth: 2       # toy (iMF: 8)
+  num_classes: 0          # unconditional: only the null class
+
+objective:
+  name: ambient_imf
+  P_mean: -0.4            # official iMF (t, r) sampling and weighting
+  P_std: 1.0
+  data_proportion: 0.5
+  norm_p: 1.0
+  norm_eps: 0.01
+  t_margin: 0.05          # noisy samples train only at t > t_n + t_margin
+
+sampler:
+  name: imf
+  steps: [1, 2]           # each step count is evaluated
+  omega: 1.0
+  t_min: 0.0
+  t_max: 1.0
+
+metric:
+  name: energy_distance
+  n_samples: 10000
+
+train:
+  steps: 100000           # toy
+  batch_size: 1024
+  lr: 1.0e-4
+  adam_b2: 0.95
+  warmup_steps: 100       # 10 epochs of the toy set at batch 1024
+  ema: 0.9999
+  precision: fp32
+  log_every: 1000
+  eval_every: 10000
