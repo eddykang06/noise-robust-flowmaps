@@ -74,7 +74,18 @@ clone of `big_things`. Check job, not yet verified:
 #SBATCH --time=01:00:00
 CMD="python -m scripts.check"    job 59122018: queued 16:06-20:47 (group GPU limit), ran 16.5 min,
                                  12 checks passed; failed on a float32 comparison in the check itself
-CMD="python -m scripts.check"    job 59153948: resubmitted 21:06 after the fix
+CMD="python -m scripts.check"    job 59153948: all 25 unit checks pass; end-to-end failed, V100
+                                 unsupported by torch cu130 -> nrfm reinstalled with torch 2.14.1+cu126
+CMD="python -m scripts.check"    job 59155309: found MeanFlow not learning; the MLP's DiT-style 1000t
+                                 time embedding made the JVP target ~1000x data scale -> raw t inputs
+CMD="python -m scripts.check"    job 59155890: 31/32 pass (bitwise reproducibility, bitwise resume,
+                                 re-scoring, all arms, flow matching learns: ED@50 0.0036 vs 0.0146
+                                 for N(0,I)). Fails "MeanFlow learns in 1 step": ED@1 0.0073 after
+                                 2000 steps (threshold 0.3x prior = 0.0044), and ED@2 0.024 is worse
+                                 than ED@1 and than N(0,I).
+Diagnostic pilots, configs/toy.yaml (MeanFlow, clean checkerboard, 20k steps), seed 42:
+CMD="python -m scripts.train --config configs/toy.yaml slug=ambient-flowmap seed=42"                     job 59156303
+CMD="python -m scripts.train --config configs/toy.yaml slug=ambient-flowmap seed=42 objective.ratio=0.75" job 59156304
 ```
 
 Redirections and events:
