@@ -114,6 +114,9 @@ files) before the GPU tests ran. GPU job 59171059 still tests that exact tree.
 to drop Claude co-author trailers; trees, authors, dates and subjects are unchanged.
 Commit IDs cited here and in `runs/ambient-flowmap.jsonl` before that date are the old
 IDs; `sha-map.txt` maps old -> new (main 9140d1b -> 6f79037).
+main now at 04df8a6 (models under src/models; 33/33 CPU tests, job 59180764).
+iMF pilot, configs/toy.yaml (official lr 1e-4, EMA 0.9999, p = 1), clean, seed 42:
+research/experiments/ambient-flowmap/pilot-imf.sbatch    job 59181941 (gpu, 2G, 3h)
 
 First experiment (brief): MeanFlow (p = 0) on clean, corrupted (sigma 0.3, 10% clean, noisy
 used as clean) and clean-only checkerboard data, seeds 42-44, 20k steps each:
