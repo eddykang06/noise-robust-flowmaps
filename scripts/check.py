@@ -139,6 +139,16 @@ def check_math():
     check("JVP = finite-difference du/dt", torch.allclose(jvp, fd, rtol=1e-4, atol=1e-5),
           f"max err {(jvp - fd).abs().max():.1e}")
 
+    # At initialisation the MeanFlow target is on the scale of the data, not dominated by du/dt.
+    torch.manual_seed(0)
+    net = MLP(dim=2, hidden=256, depth=4)
+    x, eps = sample_clean("checkerboard", 4096, gen(7)).x, torch.randn(4096, 2, generator=gen(8))
+    a, b = torch.rand(4096, generator=gen(9)), torch.rand(4096, generator=gen(10))
+    t, r = torch.maximum(a, b), torch.minimum(a, b)
+    u, u_tgt = target(net, interpolate(x, eps, t), r, t, eps - x)
+    err = (u - u_tgt).pow(2).sum(1).mean().item()
+    check("MeanFlow target well scaled at init", err < 10, f"mean sq err {err:.2f}")
+
     # The exact flow maps eps to a * eps in any number of steps; Euler converges to it.
     eps = torch.randn(n, 2, dtype=f64)
     for k in (1, 2, 7):
@@ -186,6 +196,11 @@ def check_reproducible(tmp: Path):
     prior = energy_distance(torch.randn(ref.shape, generator=gen(6)), ref)
     final = a[-1]["energy_distance@1"]
     check("MeanFlow learns the checkerboard in 1 step", final < 0.3 * prior,
+          f"{final:.4f} vs N(0, I) {prior:.4f}")
+
+    run(tmp, "fm", ["objective={name: flow_matching}", "sampler={name: euler, steps: [50]}"])
+    final = metrics(tmp, "fm")[-1]["energy_distance@50"]
+    check("flow matching learns the checkerboard in 50 Euler steps", final < 0.3 * prior,
           f"{final:.4f} vs N(0, I) {prior:.4f}")
 
 
