@@ -14,15 +14,14 @@
 #SBATCH --mem=16G
 #SBATCH --time=01:00:00
 #SBATCH --output=/n/scratch/users/e/edk005/nrfm/slurm/%x-%j.out
-set -eo pipefail  # no -u: conda activate reads unset variables
+set -euo pipefail
 
-echo "$(date +%T) setting up env"
-source /etc/profile.d/modules.sh
-module load conda/miniforge3/26.9.4-1
-eval "$(conda shell.bash hook)"
-conda activate nrfm
+# env nrfm has no activation hooks, so PATH alone activates it; loading the
+# conda module instead costs minutes on network storage.
+export PATH="$HOME/.conda/envs/nrfm/bin:$PATH"
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
 cd "$SLURM_SUBMIT_DIR"
+nvidia-smi --query-gpu=name,compute_cap --format=csv,noheader
 echo "$(date +%T) $(hostname) $(git rev-parse --short HEAD) $CMD"
 $CMD
