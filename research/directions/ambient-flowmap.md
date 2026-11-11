@@ -13,5 +13,6 @@ status: active
 1. Type of corruption: Gaussian or non-Gaussian (e.g. masking)
 2. 
 
-**First experiment.** F
+**First experiment.** Directly port ambient training to MeanFlow. We can sweep the following directions as a first pass, where the training data will be the 2-armed spiral with [specified noising schedule]
+1. Train standard iMF naively on noisy data without accounting for 
 
