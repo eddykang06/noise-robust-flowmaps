@@ -176,6 +176,27 @@ research/experiments/ambient-flowmap/diag-imf.sbatch    job 59281303: arm 1 re-s
 one-step map. At 20k steps the variants are no better: W2@1 0.61-0.71, W2@50 0.21-0.31;
 lr and EMA alone do not explain the failure (interim, one seed).
 
+iMF port verified against the official code, at the human's request (2026-11-10):
+`tests/test_imf_reference.py` (27f465e, 8ceed53). Our objective reproduces the official
+JAX `iMeanFlow.forward` (unchanged copy, bf60cd7; run under jax 0.10.2 / flax 0.12.8 in a
+separate venv, golden file `tests/reference/imf_reference.npz`) given the same closed-form
+network and replayed random draws: loss, both terms and all parameter gradients, guided and
+unguided, p = 1 and 0. The sampler is bit-identical to the official torch `generate`
+(0468798) at 1, 2 and 5 steps. Five injected porting mistakes (no stop-grad on du/dt, r
+tangent 1, flow-matching samples at the batch end, undetached adaptive weight, mean over
+dims) each make the comparison fail, and regenerating the golden file is byte-identical.
+```
+#SBATCH --partition=short --cpus-per-task=2 --time=00:45:00 --mem=4G (59284254) / 512M (59284933)
+research/experiments/ambient-flowmap/imf-reference.sbatch  59284254: 31/31 pass (2.6 min, 338 MB)
+                                                          59284933: 31/31, 5/5 mutants caught (49 s)
+```
+Documented deviations: `guidance=False` fixes omega = 1 and the interval to [0, 1] instead
+of sampling them (equal to the official objective at omega = 1, tested); the toy MLP has
+no attention and sums the conditioning embeddings instead of prepending tokens. Like
+imfDiT (which cites arXiv:2502.13129), neither network sees t, only h = t - r. On a 2-D
+point the noise level cannot be read from z, which is the leading explanation for clean
+iMF failing on the spiral; untested.
+
 First experiment (brief): MeanFlow (p = 0) on clean, corrupted (sigma 0.3, 10% clean, noisy
 used as clean) and clean-only checkerboard data, seeds 42-44, 20k steps each:
 
