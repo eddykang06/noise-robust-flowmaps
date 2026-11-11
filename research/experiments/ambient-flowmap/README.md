@@ -146,6 +146,20 @@ per-run figure (e42283b).
 suite (~20 s per 4096-sample solve). One-step test still fails: W2@1 0.661, W2@2 0.311,
 vs 0.408 for N(0,I).
 
+First experiment (brief, eddy 90d5ebd), at the human's go-ahead: spiral, 10k points, 33%
+clean, sigma^2 ~ U[0, 1] Gaussian or variance-matched box-uniform noise, p = 0, 50k steps,
+seeds 42-44, W2 at 1 and 2 steps; arms in `arms.sh` (2c5a4d2). All five arms run in
+parallel in one job, so appends to the shared runs file stay on one NFS client.
+```
+#SBATCH --partition=gpu
+#SBATCH --gres=gpu:1
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=8G
+#SBATCH --time=00:30:00   (smoke)   12:00:00 (sweep)
+research/experiments/ambient-flowmap/smoke.sbatch    job 59276660: tests + 300 steps per arm
+research/experiments/ambient-flowmap/sweep.sbatch    job 59276661: afterok:59276660
+```
+
 First experiment (brief): MeanFlow (p = 0) on clean, corrupted (sigma 0.3, 10% clean, noisy
 used as clean) and clean-only checkerboard data, seeds 42-44, 20k steps each:
 
@@ -240,9 +254,9 @@ is a weak probe at this noise level. Clean-only is the worst arm on average but 
 
 ## Next step
 
-With the human, finish the experimental framework (toys chosen: checkerboard and
-two-armed spiral; still open: spiral jitter, metrics, arms, budgets, evaluation) before
-running any experiment.
+When sweep 59276661 finishes, tabulate W2@1 and W2@2 (mean ± SE over seeds) per arm from
+`runs/ambient-flowmap.jsonl` and combine the arms' true-vs-generated figures with
+`scripts/plot.py`. Arm 1's W2@1 shows whether one-step iMF works on the toy at these settings.
 
 ## Blocked on
 
