@@ -4,7 +4,7 @@ import pytest
 import torch
 
 from src.config import load
-from src.corrupt import gaussian, gaussian_uniform_var
+from src.corrupt import box_uniform_var, gaussian, gaussian_uniform_var
 from src.data import Batch, sample_clean
 from src.metrics import wasserstein2
 from src.toy import TOYS
@@ -56,9 +56,10 @@ def test_gaussian_corruption(gen):
     assert torch.equal(obs.x[~noisy], clean.x[~noisy])
 
 
-def test_gaussian_uniform_var_corruption(gen):
+@pytest.mark.parametrize("corrupt", [gaussian_uniform_var, box_uniform_var])
+def test_per_sample_variance_corruptions(gen, corrupt):
     clean = sample_clean("spiral", 200_000, gen(1))
-    obs = gaussian_uniform_var(clean, gen(2), var_max=10.0, clean_frac=1 / 3)
+    obs = corrupt(clean, gen(2), var_max=10.0, clean_frac=1 / 3)
     noisy = obs.sigma > 0
     var = obs.sigma[noisy] ** 2
     assert abs(noisy.float().mean() - 2 / 3) < 0.005
@@ -66,6 +67,8 @@ def test_gaussian_uniform_var_corruption(gen):
     z = (obs.x - clean.x)[noisy] / obs.sigma[noisy, None]
     assert abs(z.mean()) < 0.01 and abs(z.std() - 1.0) < 0.01
     assert torch.equal(obs.x[~noisy], clean.x[~noisy])
+    if corrupt is box_uniform_var:
+        assert z.abs().max() <= 3 ** 0.5 + 1e-5
 
 
 def test_wasserstein2(gen):
