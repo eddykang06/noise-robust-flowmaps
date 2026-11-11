@@ -1,6 +1,10 @@
 """Toy iMF network for flat data `[B, dim]`, built from the official iMF embedders,
 RMSNorm, SwiGLU and zero-initialised residual gates; conditioning embeddings are
-summed into the input instead of prepended as tokens."""
+summed into the input instead of prepended as tokens.
+
+Like imfDiT it sees h = t - r but not t. `condition_on_t` adds a t embedding: a
+deviation from iMF for low-dimensional data, where the noise level cannot be read
+off z_t as it can off a noisy image."""
 
 import torch
 from torch import nn
@@ -37,9 +41,10 @@ class Head(nn.Module):
 
 class MLP(nn.Module):
     def __init__(self, dim: int, hidden: int, depth: int, aux_head_depth: int,
-                 num_classes: int, weight_init_constant: float = 0.32):
+                 num_classes: int, weight_init_constant: float = 0.32, condition_on_t: bool = False):
         super().__init__()
         self.num_classes = num_classes
+        self.t_embedder = TimestepEmbedder(hidden) if condition_on_t else None
         self.x_embedder = TorchLinear(dim, hidden)
         self.h_embedder, self.omega_embedder = TimestepEmbedder(hidden), TimestepEmbedder(hidden)
         self.cfg_t_start_embedder, self.cfg_t_end_embedder = TimestepEmbedder(hidden), TimestepEmbedder(hidden)
@@ -52,6 +57,8 @@ class MLP(nn.Module):
     def forward(self, z, t, h, omega, t_min, t_max, y):
         c = (self.h_embedder(h) + self.omega_embedder(1 - 1 / omega) + self.cfg_t_start_embedder(t_min)
              + self.cfg_t_end_embedder(t_max) + self.y_embedder(y))
+        if self.t_embedder is not None:
+            c = c + self.t_embedder(t)
         x = self.shared(self.x_embedder(z) + c)
         return self.u_head(x), self.v_head(x)
 

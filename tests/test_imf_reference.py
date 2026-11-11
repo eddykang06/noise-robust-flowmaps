@@ -144,3 +144,14 @@ def test_networks_ignore_t_like_imfdit(make):
         c = net(z, torch.full((n,), 0.1), torch.full((n,), 0.6), *rest[1:])
     assert all(torch.equal(p, q) for p, q in zip(a, b))       # t has no effect
     assert not torch.allclose(a[0], c[0])                     # h does
+
+
+def test_mlp_condition_on_t_makes_t_an_input():
+    torch.manual_seed(0)
+    net = MLP(dim=2, hidden=32, depth=3, aux_head_depth=1, num_classes=K, condition_on_t=True)
+    for p in net.parameters():
+        torch.nn.init.normal_(p, std=0.05)
+    n, z = 4, torch.randn(4, 2)
+    rest = (torch.full((n,), 0.3), torch.full((n,), 2.0), torch.zeros(n), torch.ones(n), torch.zeros(n, dtype=int))
+    with torch.no_grad():
+        assert not torch.allclose(net(z, torch.full((n,), 0.1), *rest)[0], net(z, torch.full((n,), 0.9), *rest)[0])
