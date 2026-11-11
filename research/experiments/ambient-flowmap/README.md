@@ -202,10 +202,12 @@ to the toy MLP; clean spiral, official lr / EMA and lr 1e-3 / EMA 0.999, 50k ste
 #SBATCH --partition=gpu --gres=gpu:1 --cpus-per-task=4 --mem=4G --time=02:00:00
 research/experiments/ambient-flowmap/diag-t.sbatch    job 59285877
 ```
-Interim (seed 42, 12/12 reference tests pass first): with t, lr 1e-3 / EMA 0.999 reaches
-W2@1 0.124, W2@2 0.101, W2@50 0.096 at 20k steps, at the 0.122 floor (both are 4096-sample
-estimates); official lr / EMA is still improving (W2@1 0.359 at 20k, EMA lag). Without t
-the same settings stayed at W2@1 ~0.71. Conditioning on t is what the toy needed.
+Done (55 min, 2.0 GB; 12/12 reference tests pass first). W2 at 50k, seed 42:
+t, lr 1e-3 / EMA 0.999: W2@1/2/8/50 = 0.113 / 0.104 / 0.096 / 0.102, at the 0.122 floor from
+20k on; t, official lr / EMA: 0.155 / 0.122 / 0.110 / 0.113, still falling at 50k. Without t
+every setting ends near W2@1 0.71. The figures show both arms with t, but mass left between
+the arms, which W2 on 4096 samples no longer resolves (its floor 0.122 is at least as large).
+Conditioning on t is what the toy needed; one seed.
 
 First experiment (brief): MeanFlow (p = 0) on clean, corrupted (sigma 0.3, 10% clean, noisy
 used as clean) and clean-only checkerboard data, seeds 42-44, 20k steps each:
@@ -301,8 +303,8 @@ numbers (MeanFlow, checkerboard) are superseded by the iMF pipeline and are not 
 
 ## Next step
 
-From 59285877: if the t-conditioned MLP learns the clean spiral (W2@50 near the 0.122
-floor), propose it to the human as the toy architecture and rerun the five-arm sweep with it.
+The human decides the toy setup for the rerun of the five-arm sweep: t conditioning
+(deviation from iMF), lr / EMA, and whether W2 needs more samples to resolve the arms.
 
 ## Blocked on
 
