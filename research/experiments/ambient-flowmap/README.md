@@ -163,12 +163,12 @@ Redirections and events:
   spiral and the checkerboard, under several corruption schemes; the first axis is
   Gaussian vs non-Gaussian (e.g. masking) corruption. The second axis and the first
   experiment are blank in the brief, so nothing is acted on beyond recording it.
-- 2026-11-10 ~21:10: the brief's first experiment: port ambient training directly to
-  MeanFlow on the two-armed spiral. Gaussian case: 33% clean, the rest with noise of
-  variance sigma^2 ~ U[0, 10] drawn per point (implemented as `gaussian_uniform_var`,
-  07e0e52). Non-Gaussian case: 33% clean, the rest with additive uniform noise (sentence
-  unfinished). Arms: (1) iMF on clean data; (2) iMF on Gaussian-corrupted data, no
-  adjustment; (3) ambient iMF, Gaussian; (4) ambient iMF, non-Gaussian.
+- 2026-11-10 21:09 (eddy 671ac8e): the brief's first experiment: port ambient training
+  directly to MeanFlow on the two-armed spiral. Gaussian case: 33% clean, the rest with
+  Gaussian noise of variance sigma^2 ~ U[0, 1] drawn per point (`gaussian_uniform_var`,
+  var_max 1). Non-Gaussian case: 33% clean, the rest with uniform noise of the same
+  per-point variance sigma^2 ~ U[0, 1]. Arms: (1) iMF on clean data; (2) iMF on Gaussian-
+  corrupted data, no adjustment; (3) ambient iMF, Gaussian; (4) ambient iMF, uniform.
 - 2026-11-10: the human asked for a true vs generated comparison in every toy run's
   output. e42283b: each toy run writes `true-vs-generated.png` to its run directory after
   the last step (training data, true samples, generated samples per step count, W2 over
