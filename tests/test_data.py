@@ -4,7 +4,7 @@ import pytest
 import torch
 
 from src.config import load
-from src.corrupt import gaussian
+from src.corrupt import gaussian, gaussian_uniform_var
 from src.data import Batch, sample_clean
 from src.metrics import wasserstein2
 from src.toy import TOYS
@@ -53,6 +53,18 @@ def test_gaussian_corruption(gen):
     assert abs(noisy.float().mean() - 0.9) < 0.005
     assert abs((obs.x - clean.x)[noisy].std() - 0.3) < 0.003
     assert torch.equal(obs.sigma.unique(), torch.tensor([0.0, 0.3]))
+    assert torch.equal(obs.x[~noisy], clean.x[~noisy])
+
+
+def test_gaussian_uniform_var_corruption(gen):
+    clean = sample_clean("spiral", 200_000, gen(1))
+    obs = gaussian_uniform_var(clean, gen(2), var_max=10.0, clean_frac=1 / 3)
+    noisy = obs.sigma > 0
+    var = obs.sigma[noisy] ** 2
+    assert abs(noisy.float().mean() - 2 / 3) < 0.005
+    assert var.max() <= 10.0 and abs(var.mean() - 5.0) < 0.05 and abs(var.std() - 10 / 12 ** 0.5) < 0.05
+    z = (obs.x - clean.x)[noisy] / obs.sigma[noisy, None]
+    assert abs(z.mean()) < 0.01 and abs(z.std() - 1.0) < 0.01
     assert torch.equal(obs.x[~noisy], clean.x[~noisy])
 
 
