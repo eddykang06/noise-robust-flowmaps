@@ -20,8 +20,11 @@ We will use training data from the 2-armed spiral distribution. For the data wit
 For the non-Gaussian corruption, we will keep 33% clean data. The $remaining 66% $ will randomly sample a variance $\sigma^2 \in [0,1]$ and add corresponding Uniform noise to the clean training point. 
 
 We can sweep the following directions as a first pass.
-	1. iMF; standard iMF training (no noise adjustment); clean data 
+	1. iMF; standard iMF training (no noise adjustment); clean data (all training points clean)
 	2. iMF; standard iMF training (no noise adjustment); Gaussian corruption
 	3. iMF; ambient training; noisy data; Gaussian corruption
 	4. iMF; ambient training: noisy data; non-Gaussian corruption
+	5. iMF; standard iMF training (no noise adjustment); non-Gaussian corruption
+
+Each arm: three seeds (42, 43, 44); 50k training steps; W2 at 1 and 2 sampling steps.
 
