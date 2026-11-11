@@ -3,7 +3,7 @@
 # torch tests that compare our port with them and with the official torch sampler.
 #SBATCH --partition=short
 #SBATCH --cpus-per-task=2
-#SBATCH --mem=4G
+#SBATCH --mem=512M
 #SBATCH --time=00:45:00
 #SBATCH --output=/n/scratch/users/e/edk005/nrfm/slurm/%x-%j.out
 set -euo pipefail
