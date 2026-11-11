@@ -171,7 +171,10 @@ origin and its 2-step samples a fuzzy disk (`$NRFM_OUT/ambient-flowmap/<run>/tru
 generated.png`), so the arms cannot be compared and seeds 43-44 would repeat the failure.
 Diagnostic, clean spiral (gpu, 4 CPU, 6G, 3 h): re-score arm 1 seed 42 at 1/2/8/50 steps,
 and train lr 1e-3 / EMA 0.9999, lr 1e-3 / EMA 0.999, lr 1e-4 / EMA 0.999 (50k steps):
-research/experiments/ambient-flowmap/diag-imf.sbatch    job 59281303
+research/experiments/ambient-flowmap/diag-imf.sbatch    job 59281303: arm 1 re-scored W2@1/2/8/50 = 0.739 /
+0.361 / 0.258 / 0.248 (floor 0.122), so the flow itself is under-learned, not only the
+one-step map. At 20k steps the variants are no better: W2@1 0.61-0.71, W2@50 0.21-0.31;
+lr and EMA alone do not explain the failure (interim, one seed).
 
 First experiment (brief): MeanFlow (p = 0) on clean, corrupted (sigma 0.3, 10% clean, noisy
 used as clean) and clean-only checkerboard data, seeds 42-44, 20k steps each:
