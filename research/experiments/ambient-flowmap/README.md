@@ -165,6 +165,13 @@ about 13 steps/s per arm with five in parallel, so ~65 min per 50k-step run and 
 the three seeds; peak RAM 5.2 GB of 8G. At 10k steps (seed 42) every arm's W2@1 is at or
 above the untrained model's ~0.42, but the EMA (0.9999) still holds e^-1 = 37% of the
 initial weights then, so 10k numbers are not interpretable.
+Cancelled at 22:33 after seed 42 of every arm finished (1 h 06 min): even clean iMF
+(arm 1) does not learn the spiral. Its 1-step samples are a blob contracted toward the
+origin and its 2-step samples a fuzzy disk (`$NRFM_OUT/ambient-flowmap/<run>/true-vs-
+generated.png`), so the arms cannot be compared and seeds 43-44 would repeat the failure.
+Diagnostic, clean spiral (gpu, 4 CPU, 6G, 3 h): re-score arm 1 seed 42 at 1/2/8/50 steps,
+and train lr 1e-3 / EMA 0.9999, lr 1e-3 / EMA 0.999, lr 1e-4 / EMA 0.999 (50k steps):
+research/experiments/ambient-flowmap/diag-imf.sbatch    job 59281303
 
 First experiment (brief): MeanFlow (p = 0) on clean, corrupted (sigma 0.3, 10% clean, noisy
 used as clean) and clean-only checkerboard data, seeds 42-44, 20k steps each:
@@ -243,26 +250,26 @@ Redirections and events:
 
 ## Results
 
-First experiment (job 59163437): MeanFlow (p = 0), checkerboard, 20k steps, energy distance on
-10k samples against fresh clean samples, mean ± SE over seeds 42-44. These are not baseline
-results yet: `research/baseline.md` has no protocol.
+First experiment, seed 42 only (sweep 59276661, cancelled), W2 at 50k steps on 4096
+samples; floor (two independent clean samples) 0.122, untrained model ~0.42:
 
-| arm | ED@1 | ED@2 |
+| arm | W2@1 | W2@2 |
 |---|---|---|
-| clean | 0.00206 ± 0.00001 | 0.00118 ± 0.00015 |
-| corrupt (sigma 0.3, 10% clean, noisy used as clean) | 0.00273 ± 0.00045 | 0.00230 ± 0.00014 |
-| clean-only (~1k clean samples) | 0.00343 ± 0.00057 | 0.00333 ± 0.00097 |
+| 1 iMF, clean | 0.739 | 0.361 |
+| 2 iMF, Gaussian, no adjustment | 0.676 | 0.361 |
+| 3 ambient iMF, Gaussian | 0.750 | 0.429 |
+| 4 ambient iMF, uniform | 0.748 | 0.433 |
+| 5 iMF, uniform, no adjustment | 0.678 | 0.264 |
 
-At sigma = 0.3 the corruption clearly hurts 2-step samples (0.00230 vs 0.00118, about 6 SE),
-but the 1-step gap is inside seed variance. Clean MeanFlow's own 1-step error (0.0021, about
-5x the ED floor for two 10k samples) is about as large as the corruption effect, so 1-step ED
-is a weak probe at this noise level. Clean-only is the worst arm on average but varies most.
+Not a result: one seed, and the clean arm fails to learn the target, so differences
+between arms say nothing about corruption or the ambient target. Earlier energy-distance
+numbers (MeanFlow, checkerboard) are superseded by the iMF pipeline and are not comparable.
 
 ## Next step
 
-When sweep 59276661 finishes, tabulate W2@1 and W2@2 (mean ± SE over seeds) per arm from
-`runs/ambient-flowmap.jsonl` and combine the arms' true-vs-generated figures with
-`scripts/plot.py`. Arm 1's W2@1 shows whether one-step iMF works on the toy at these settings.
+From diagnostic 59281303: if 50-step sampling of arm 1 is good, the flow is learned and the
+one-step map is the problem; if a larger lr or shorter EMA learns the spiral, rerun the
+sweep with it.
 
 ## Blocked on
 
