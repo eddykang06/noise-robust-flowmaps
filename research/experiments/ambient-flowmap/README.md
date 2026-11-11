@@ -142,6 +142,9 @@ research/experiments/ambient-flowmap/gpu-tests.sbatch    job 59190716: 45/46 pas
 Same script, after the W2 change (mem 2G: 1.06 GB measured plus the W2 cost matrix and
 plotting): job 59273327, running (tests 84f9e9d). Job 59274501, same script, tests the
 per-run figure (e42283b).
+59273327: 46/47 pass in 22.5 min (peak RAM 1.29 GB); W2 evaluation adds ~9 min to the
+suite (~20 s per 4096-sample solve). One-step test still fails: W2@1 0.661, W2@2 0.311,
+vs 0.408 for N(0,I).
 
 First experiment (brief): MeanFlow (p = 0) on clean, corrupted (sigma 0.3, 10% clean, noisy
 used as clean) and clean-only checkerboard data, seeds 42-44, 20k steps each:
@@ -169,6 +172,9 @@ Redirections and events:
   var_max 1). Non-Gaussian case: 33% clean, the rest with uniform noise of the same
   per-point variance sigma^2 ~ U[0, 1]. Arms: (1) iMF on clean data; (2) iMF on Gaussian-
   corrupted data, no adjustment; (3) ambient iMF, Gaussian; (4) ambient iMF, uniform.
+- 2026-11-10 21:20: the human set 10,000 training points, kept the spiral's 0.1 radial
+  jitter (0.02 after scaling), and said no kill criterion is needed for the first
+  experiment; the frontmatter criterion (old checkerboard setup) no longer applies to it.
 - 2026-11-10 21:14: at the human's instruction, the brief on eddy (90d5ebd) now has arm 1
   on all-clean data, a fifth arm (standard iMF on uniform-corrupted data), and three seeds
   (42-44), 50k steps and W2 at 1 and 2 steps for every arm. Baseline.md is set aside for now.
