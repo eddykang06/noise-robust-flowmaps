@@ -14,3 +14,4 @@ VENV=/n/scratch/users/e/edk005/nrfm/jax-ref
 $VENV/bin/pip freeze | grep -iE "^(jax|jaxlib|flax|numpy)=="
 $VENV/bin/python tests/reference/make_imf_reference.py
 $NRFM/python -m pytest -v tests/test_imf_reference.py tests/test_imf.py tests/test_models.py
+PYTHONPATH=. $NRFM/python research/experiments/ambient-flowmap/imf_mutants.py 2>&1 | grep -E "^(caught|MISSED)"

@@ -1,2 +1,3 @@
-jax[cpu]
-flax
+jax[cpu]==0.10.2
+jaxlib==0.10.2
+flax==0.12.8
