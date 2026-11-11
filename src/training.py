@@ -1,6 +1,7 @@
 """The training loop, shared by every objective.
 
-A run lives in `<out_root>/<slug>/<run_id>/` (resolved config and checkpoint).
+A run lives in `<out_root>/<slug>/<run_id>/` (resolved config, checkpoint and,
+for the 2-D toys, `true-vs-generated.png` after the last step).
 At each evaluation milestone the EMA network is sampled, scored against fresh
 clean samples, checkpointed, and one record is appended to
 `<runs_dir>/<slug>.jsonl`. Rerunning the same config resumes from the
@@ -25,7 +26,9 @@ from src.data import Batch, batches, sample_clean
 from src.metrics import METRICS
 from src.models import MODELS
 from src.objectives import OBJECTIVES
+from src.plots import save as save_figure
 from src.sampling import SAMPLERS
+from src.toy import TOYS
 
 REPO = Path(__file__).resolve().parents[1]
 DTYPES = {"fp32": torch.float32, "bf16": torch.bfloat16}
@@ -54,11 +57,27 @@ def samples(net, cfg: Config, ref: Batch) -> dict:
     return {steps: draw(net, cfg, eps, steps, ref.cond) for steps in cfg.sampler["steps"]}
 
 
+def score(cfg: Config, generated: dict, ref: Batch) -> dict:
+    metric = METRICS[cfg.metric["name"]]
+    return {f"{cfg.metric['name']}@{steps}": metric(x, ref.x) for steps, x in generated.items()}
+
+
 def evaluate(net, cfg: Config, ref: Batch) -> dict:
     """Scores the samples of every sampler step count against the reference."""
-    metric = METRICS[cfg.metric["name"]]
-    return {f"{cfg.metric['name']}@{steps}": metric(x, ref.x)
-            for steps, x in samples(net, cfg, ref).items()}
+    return score(cfg, samples(net, cfg, ref), ref)
+
+
+def figure_run(cfg: Config, data: Batch, ref: Batch, generated: dict) -> dict:
+    """What `src.plots` draws for one run: its records so far and the metric's
+    floor, the score of a second, independent clean sample."""
+    runs_file = REPO / cfg.runs_dir / f"{cfg.slug}.jsonl"
+    records = [r for r in map(json.loads, runs_file.read_text().splitlines())
+               if r["run_id"] == cfg.run_id]
+    gen = torch.Generator().manual_seed(20_000 + cfg.seed)
+    other = sample_clean(cfg.data["name"], len(ref), gen)
+    floor = METRICS[cfg.metric["name"]](other.x, ref.x)
+    return {"label": cfg.run_id, "data": data, "true": ref.x, "generated": generated,
+            "records": records, "metric": cfg.metric["name"], "floor": floor}
 
 
 def draw(net, cfg: Config, eps, steps: int, y=None):
@@ -136,7 +155,8 @@ def train(cfg: Config):
             print(f"step {step} loss {loss.item():.4f} "
                   + " ".join(f"{k} {v.item():.4f}" for k, v in logs.items()), flush=True)
         if step % cfg.train["eval_every"] == 0 or step == cfg.train["steps"]:
-            metrics = evaluate(ema, cfg, ref)
+            generated = samples(ema, cfg, ref)
+            metrics = score(cfg, generated, ref)
             elapsed = time.time() - start
             torch.save({"net": net.state_dict(), "ema": ema.state_dict(), "opt": opt.state_dict(),
                         "sched": sched.state_dict(), "step": step, "elapsed": elapsed,
@@ -147,6 +167,8 @@ def train(cfg: Config):
             with open(runs_file, "a") as f:
                 f.write(json.dumps(record) + "\n")
             print(f"step {step} " + " ".join(f"{k} {v:.5f}" for k, v in metrics.items()), flush=True)
+            if step == cfg.train["steps"] and cfg.data["name"] in TOYS:
+                save_figure([figure_run(cfg, data, ref, generated)], run_dir / "true-vs-generated.png")
 
 
 def load_run(run_dir: Path) -> tuple[Config, torch.nn.Module]:

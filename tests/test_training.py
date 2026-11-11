@@ -12,7 +12,6 @@ import pytest
 import torch
 
 from src.config import load
-from scripts.plot import plot
 from src.metrics import wasserstein2
 from src.training import evaluate, load_run, reference, train
 
@@ -55,11 +54,9 @@ def test_learns_the_checkerboard_in_one_step(reference_run):
     assert reference_run[-1]["wasserstein2@1"] < 0.5 * prior, (reference_run[-1], prior)
 
 
-def test_plot_writes_a_figure(tmp, reference_run):
+def test_toy_run_writes_true_vs_generated_figure(tmp, reference_run):
     cfg = load("configs/toy.yaml", ["slug=test", f"out_root={tmp}/a", f"runs_dir={tmp}", *FAST])
-    out = tmp / "a.png"
-    plot([Path(cfg.out_root) / cfg.slug / cfg.run_id], out)
-    assert out.stat().st_size > 0
+    assert (Path(cfg.out_root) / cfg.slug / cfg.run_id / "true-vs-generated.png").stat().st_size > 0
 
 
 def test_interrupted_run_resumes_bitwise(tmp, reference_run, monkeypatch):
