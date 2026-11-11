@@ -159,6 +159,12 @@ parallel in one job, so appends to the shared runs file stay on one NFS client.
 research/experiments/ambient-flowmap/smoke.sbatch    job 59276660: tests + 300 steps per arm
 research/experiments/ambient-flowmap/sweep.sbatch    job 59276661: afterok:59276660
 ```
+Smoke 59276660 passed in 83 s (17 data/ambient tests; all five arms ran 300 steps in
+parallel, wrote 5 whole records and 5 figures). Sweep 59276661 started 21:27 on a V100:
+about 13 steps/s per arm with five in parallel, so ~65 min per 50k-step run and ~3.5 h for
+the three seeds; peak RAM 5.2 GB of 8G. At 10k steps (seed 42) every arm's W2@1 is at or
+above the untrained model's ~0.42, but the EMA (0.9999) still holds e^-1 = 37% of the
+initial weights then, so 10k numbers are not interpretable.
 
 First experiment (brief): MeanFlow (p = 0) on clean, corrupted (sigma 0.3, 10% clean, noisy
 used as clean) and clean-only checkerboard data, seeds 42-44, 20k steps each:
