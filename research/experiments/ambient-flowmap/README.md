@@ -235,6 +235,10 @@ Redirections and events:
   var_max 1). Non-Gaussian case: 33% clean, the rest with uniform noise of the same
   per-point variance sigma^2 ~ U[0, 1]. Arms: (1) iMF on clean data; (2) iMF on Gaussian-
   corrupted data, no adjustment; (3) ambient iMF, Gaussian; (4) ambient iMF, uniform.
+- 2026-11-11 01:30: the human requires the exact iMF implementation: no t conditioning
+  for the toy network. The `condition_on_t` option (f1d4cfc) is removed; its diagnostic
+  (59285877) stays as evidence that the 2-D failure comes from the network not seeing t.
+  Proposed instead: the spiral embedded in D dimensions, where t is readable from z_t.
 - 2026-11-10 21:20: the human set 10,000 training points, kept the spiral's 0.1 radial
   jitter (0.02 after scaling), and said no kill criterion is needed for the first
   experiment; the frontmatter criterion (old checkerboard setup) no longer applies to it.
@@ -303,8 +307,9 @@ numbers (MeanFlow, checkerboard) are superseded by the iMF pipeline and are not 
 
 ## Next step
 
-The human decides the toy setup for the rerun of the five-arm sweep: t conditioning
-(deviation from iMF), lr / EMA, and whether W2 needs more samples to resolve the arms.
+Build the embedded spiral once the human picks D (proposed 256), the scaling (proposed:
+unit variance per coordinate, corruption scaled to match the 2-D setup in the plane) and
+lr / EMA (proposed: official), then check clean faithful iMF on it before the sweep.
 
 ## Blocked on
 
