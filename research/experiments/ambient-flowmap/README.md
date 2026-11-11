@@ -169,6 +169,9 @@ Redirections and events:
   var_max 1). Non-Gaussian case: 33% clean, the rest with uniform noise of the same
   per-point variance sigma^2 ~ U[0, 1]. Arms: (1) iMF on clean data; (2) iMF on Gaussian-
   corrupted data, no adjustment; (3) ambient iMF, Gaussian; (4) ambient iMF, uniform.
+- 2026-11-10 21:14: at the human's instruction, the brief on eddy (90d5ebd) now has arm 1
+  on all-clean data, a fifth arm (standard iMF on uniform-corrupted data), and three seeds
+  (42-44), 50k steps and W2 at 1 and 2 steps for every arm. Baseline.md is set aside for now.
 - 2026-11-10: the human asked for a true vs generated comparison in every toy run's
   output. e42283b: each toy run writes `true-vs-generated.png` to its run directory after
   the last step (training data, true samples, generated samples per step count, W2 over
