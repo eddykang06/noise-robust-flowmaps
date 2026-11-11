@@ -173,8 +173,8 @@ Diagnostic, clean spiral (gpu, 4 CPU, 6G, 3 h): re-score arm 1 seed 42 at 1/2/8/
 and train lr 1e-3 / EMA 0.9999, lr 1e-3 / EMA 0.999, lr 1e-4 / EMA 0.999 (50k steps):
 research/experiments/ambient-flowmap/diag-imf.sbatch    job 59281303: arm 1 re-scored W2@1/2/8/50 = 0.739 /
 0.361 / 0.258 / 0.248 (floor 0.122), so the flow itself is under-learned, not only the
-one-step map. At 20k steps the variants are no better: W2@1 0.61-0.71, W2@50 0.21-0.31;
-lr and EMA alone do not explain the failure (interim, one seed).
+one-step map. At 50k steps (job done, 54 min, 3.1 GB) every variant ends at W2@1 0.709-0.713,
+W2@2 0.320-0.341, W2@50 0.231-0.262: lr and EMA do not explain the failure (one seed).
 
 iMF port verified against the official code, at the human's request (2026-11-10):
 `tests/test_imf_reference.py` (27f465e, 8ceed53). Our objective reproduces the official
@@ -196,6 +196,12 @@ no attention and sums the conditioning embeddings instead of prepending tokens. 
 imfDiT (which cites arXiv:2502.13129), neither network sees t, only h = t - r. On a 2-D
 point the noise level cannot be read from z, which is the leading explanation for clean
 iMF failing on the spiral; untested.
+Test of that explanation: `model.condition_on_t` (f1d4cfc, default off) adds a t embedding
+to the toy MLP; clean spiral, official lr / EMA and lr 1e-3 / EMA 0.999, 50k steps:
+```
+#SBATCH --partition=gpu --gres=gpu:1 --cpus-per-task=4 --mem=4G --time=02:00:00
+research/experiments/ambient-flowmap/diag-t.sbatch    job 59285877
+```
 
 First experiment (brief): MeanFlow (p = 0) on clean, corrupted (sigma 0.3, 10% clean, noisy
 used as clean) and clean-only checkerboard data, seeds 42-44, 20k steps each:
@@ -291,9 +297,8 @@ numbers (MeanFlow, checkerboard) are superseded by the iMF pipeline and are not 
 
 ## Next step
 
-From diagnostic 59281303: if 50-step sampling of arm 1 is good, the flow is learned and the
-one-step map is the problem; if a larger lr or shorter EMA learns the spiral, rerun the
-sweep with it.
+From 59285877: if the t-conditioned MLP learns the clean spiral (W2@50 near the 0.122
+floor), propose it to the human as the toy architecture and rerun the five-arm sweep with it.
 
 ## Blocked on
 
