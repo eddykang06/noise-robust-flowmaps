@@ -140,7 +140,8 @@ research/experiments/ambient-flowmap/gpu-tests.sbatch    job 59190716: 45/46 pas
                                  p = 0 does not transfer from the old MeanFlow code. Cause unknown;
                                  the test's shortened lr/EMA/steps are the next suspect.
 Same script, after the W2 change (mem 2G: 1.06 GB measured plus the W2 cost matrix and
-plotting): job 59273327, queued.
+plotting): job 59273327, running (tests 84f9e9d). Job 59274501, same script, tests the
+per-run figure (e42283b).
 
 First experiment (brief): MeanFlow (p = 0) on clean, corrupted (sigma 0.3, 10% clean, noisy
 used as clean) and clean-only checkerboard data, seeds 42-44, 20k steps each:
@@ -162,6 +163,14 @@ Redirections and events:
   spiral and the checkerboard, under several corruption schemes; the first axis is
   Gaussian vs non-Gaussian (e.g. masking) corruption. The second axis and the first
   experiment are blank in the brief, so nothing is acted on beyond recording it.
+- 2026-11-10 ~20:40: the brief's first experiment is being written: port ambient
+  training directly to MeanFlow, sweeping a first pass on the two-armed spiral under a
+  noising schedule still to be specified; arm 1 is standard iMF trained naively on noisy
+  data. The rest is unfinished, so nothing is launched from it yet.
+- 2026-11-10: the human asked for a true vs generated comparison in every toy run's
+  output. e42283b: each toy run writes `true-vs-generated.png` to its run directory after
+  the last step (training data, true samples, generated samples per step count, W2 over
+  training with its floor); `scripts/plot.py` puts several runs in one figure.
 - 2026-11-10: the human chose Wasserstein-2 as the only metric, with plots of every
   result. 84f9e9d: `src/metrics.py` computes exact W2 by linear assignment on 4096
   samples (O(n^3), so not 10k); energy distance is removed; `scripts/plot.py` draws each
