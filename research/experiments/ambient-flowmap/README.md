@@ -202,6 +202,10 @@ to the toy MLP; clean spiral, official lr / EMA and lr 1e-3 / EMA 0.999, 50k ste
 #SBATCH --partition=gpu --gres=gpu:1 --cpus-per-task=4 --mem=4G --time=02:00:00
 research/experiments/ambient-flowmap/diag-t.sbatch    job 59285877
 ```
+Interim (seed 42, 12/12 reference tests pass first): with t, lr 1e-3 / EMA 0.999 reaches
+W2@1 0.124, W2@2 0.101, W2@50 0.096 at 20k steps, at the 0.122 floor (both are 4096-sample
+estimates); official lr / EMA is still improving (W2@1 0.359 at 20k, EMA lag). Without t
+the same settings stayed at W2@1 ~0.71. Conditioning on t is what the toy needed.
 
 First experiment (brief): MeanFlow (p = 0) on clean, corrupted (sigma 0.3, 10% clean, noisy
 used as clean) and clean-only checkerboard data, seeds 42-44, 20k steps each:
