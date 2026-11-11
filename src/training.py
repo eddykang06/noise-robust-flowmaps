@@ -46,14 +46,19 @@ def reference(cfg: Config) -> Batch:
 
 
 @torch.no_grad()
-def evaluate(net, cfg: Config, ref: Batch) -> dict:
-    """Scores every sampler step count on the same seeded noise, without
-    touching the training RNG."""
-    metric = METRICS[cfg.metric["name"]]
+def samples(net, cfg: Config, ref: Batch) -> dict:
+    """Samples for every sampler step count, from the same seeded noise and
+    without touching the training RNG."""
     gen = torch.Generator(ref.x.device).manual_seed(cfg.seed)
     eps = torch.randn(ref.x.shape, generator=gen, device=ref.x.device)
-    return {f"{cfg.metric['name']}@{steps}": metric(draw(net, cfg, eps, steps, ref.cond), ref.x)
-            for steps in cfg.sampler["steps"]}
+    return {steps: draw(net, cfg, eps, steps, ref.cond) for steps in cfg.sampler["steps"]}
+
+
+def evaluate(net, cfg: Config, ref: Batch) -> dict:
+    """Scores the samples of every sampler step count against the reference."""
+    metric = METRICS[cfg.metric["name"]]
+    return {f"{cfg.metric['name']}@{steps}": metric(x, ref.x)
+            for steps, x in samples(net, cfg, ref).items()}
 
 
 def draw(net, cfg: Config, eps, steps: int, y=None):

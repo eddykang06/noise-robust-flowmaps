@@ -12,7 +12,8 @@ import pytest
 import torch
 
 from src.config import load
-from src.metrics import energy_distance
+from scripts.plot import plot
+from src.metrics import wasserstein2
 from src.training import evaluate, load_run, reference, train
 
 pytestmark = pytest.mark.gpu
@@ -50,8 +51,15 @@ def test_identical_runs_are_bitwise_reproducible(tmp, reference_run):
 
 def test_learns_the_checkerboard_in_one_step(reference_run):
     ref = reference(load("configs/toy.yaml", ["slug=test"])).x
-    prior = energy_distance(torch.randn(ref.shape, generator=torch.Generator().manual_seed(6)), ref)
-    assert reference_run[-1]["energy_distance@1"] < 0.3 * prior, (reference_run[-1], prior)
+    prior = wasserstein2(torch.randn(ref.shape, generator=torch.Generator().manual_seed(6)), ref)
+    assert reference_run[-1]["wasserstein2@1"] < 0.5 * prior, (reference_run[-1], prior)
+
+
+def test_plot_writes_a_figure(tmp, reference_run):
+    cfg = load("configs/toy.yaml", ["slug=test", f"out_root={tmp}/a", f"runs_dir={tmp}", *FAST])
+    out = tmp / "a.png"
+    plot([Path(cfg.out_root) / cfg.slug / cfg.run_id], out)
+    assert out.stat().st_size > 0
 
 
 def test_interrupted_run_resumes_bitwise(tmp, reference_run, monkeypatch):

@@ -41,8 +41,8 @@ sampler:
   t_max: 1.0
 
 metric:
-  name: energy_distance
-  n_samples: 10000
+  name: wasserstein2       # exact, by linear assignment: O(n^3) in n_samples
+  n_samples: 4096
 
 train:
   steps: 50000            # toy: synthetic-experiment budget (human, 2026-11-10)

@@ -6,7 +6,7 @@ import torch
 from src.config import load
 from src.corrupt import gaussian
 from src.data import Batch, sample_clean
-from src.metrics import energy_distance
+from src.metrics import wasserstein2
 from src.toy import TOYS
 from src.training import build_dataset, reference
 
@@ -56,8 +56,13 @@ def test_gaussian_corruption(gen):
     assert torch.equal(obs.x[~noisy], clean.x[~noisy])
 
 
-def test_energy_distance(gen):
-    p, q = torch.randn(5000, 2, generator=gen(4)), torch.randn(5000, 2, generator=gen(5))
-    assert abs(energy_distance(p, p)) < 1e-6
-    assert abs(energy_distance(p, q) - energy_distance(q, p)) < 1e-6
-    assert energy_distance(p, q) < 0.01 < 0.3 < energy_distance(p, q + 1)
+def test_wasserstein2(gen):
+    p, q = torch.randn(1000, 2, generator=gen(4)), torch.randn(1000, 2, generator=gen(5))
+    assert wasserstein2(p, p) < 1e-6
+    assert abs(wasserstein2(p, q) - wasserstein2(q, p)) < 1e-9
+    # A translation is optimally coupled by itself, so W2 is its length.
+    assert abs(wasserstein2(p, p + torch.tensor([3.0, 4.0])) - 5.0) < 1e-5
+    # In one dimension the optimal plan matches sorted samples.
+    a, b = p[:, :1].double(), q[:, :1].double()
+    sorted_w2 = (a.sort(0).values - b.sort(0).values).square().mean().sqrt().item()
+    assert abs(wasserstein2(a, b) - sorted_w2) < 1e-9
