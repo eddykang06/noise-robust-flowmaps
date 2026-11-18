@@ -30,6 +30,25 @@ forward passes.
 
 ## Current state
 
+**Main cleanup pushed (human, 2026-11-18): db79e6d on main.** `sample_clean` moved to
+`src/toy.py`; `Batch.mask` covers a leading part of x's shape, broadcast by
+`path.expand_mask`, and iMF's loss_u/loss_v logs use the masked mean like the loss. Parity
+job 59990806: 296/296 outputs bitwise equal to 3b6a7ba; the only test failure on both is
+the pre-existing `test_learns_the_checkerboard_in_one_step` (still open: needs a toy exact
+iMF learns).
+
+**More sampling steps (human, 2026-11-18): job 60026233** re-scores the four
+dimension-sweep checkpoints at 1, 2, 3, 4 and 8 steps (`more-steps.sbatch`, no training):
+
+```
+#SBATCH --partition=gpu,gpu_quad
+#SBATCH --qos=gpuquad_qos
+#SBATCH --gres=gpu:1
+#SBATCH --cpus-per-task=2
+#SBATCH --mem=2G
+#SBATCH --time=00:30:00
+```
+
 **Redirection (human, 2026-11-18): the sweep runs seed 42 only, with no repeat runs at
 other seeds** (the brief asks for 42–44). Single-seed differences are reported as such, not
 as results under the standards of evidence.
