@@ -2,11 +2,12 @@
 # Pixel MeanFlow toy setup (arXiv 2601.22158, Sec. 5) for exact iMF: the clean two-armed
 # spiral observed in D dimensions (src/embed.py), D in {2, 8, 16, 512}, seed 42, 50k steps.
 # Runs the full test suite first and stops if it fails.
-#SBATCH --partition=gpu
+#SBATCH --partition=gpu,gpu_quad
+#SBATCH --qos=gpuquad_qos
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=6G
-#SBATCH --time=03:00:00
+#SBATCH --time=02:00:00
 #SBATCH --output=/n/scratch/users/e/edk005/nrfm/slurm/%x-%j.out
 set -euo pipefail
 export PATH="$HOME/.conda/envs/nrfm/bin:$PATH"
