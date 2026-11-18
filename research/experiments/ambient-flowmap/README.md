@@ -30,11 +30,27 @@ forward passes.
 
 ## Current state
 
-**Blocked before the first run: there is no code to run.** `scripts/train.py`,
-`sample.py`, `eval.py`, `make_data.py`, `configs/*.yaml`, `src/toy.py`,
-`src/corrupt.py`, `src/training.py` and `src/sampling.py` are empty stubs on
-`origin/eddy`, and `research/baseline.md` has no protocol or overrides. No jobs
-have been submitted.
+**Redirection (human, 2026-11-18): use the Pixel MeanFlow toy setup.** Exact iMF
+conditions only on h = t − r, and on the 2-D spiral it cannot read t off z_t, so even clean
+iMF fails (Results). Following pMF (arXiv 2601.22158, Sec. 5), the 2-D toy is now observed
+in D dimensions through a fixed orthogonal matrix (`src/embed.py`, `data.dim`). Corruption
+is added in the frame where the plane is the first two coordinates, then rotated, so
+uniform noise stays uniform in the plane. Runs are scored by W2 in the plane (comparable to
+the 2-D numbers and the 0.122 floor) and by the RMS of the D − 2 off-plane coordinates,
+which is 0 for clean data and about 0.58 for a model that learns the corruption. Figures
+plot the plane. pMF reports that u-prediction (iMF) degrades as D grows, so D is chosen by
+a clean sweep first.
+
+Clean-iMF dimension sweep, job 59981814 (runs the test suite first; spiral-imf.yaml,
+seed 42, 50k steps, D ∈ {2, 8, 16, 512} in parallel on one GPU):
+
+```
+#SBATCH --partition=gpu
+#SBATCH --gres=gpu:1
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=6G
+#SBATCH --time=03:00:00
+```
 
 Method design, fixed before any run. MeanFlow (Geng et al., 2025) uses the
 linear path z_t = (1−t)x + tε and learns the average velocity u(z_t, r, t).
@@ -307,9 +323,8 @@ numbers (MeanFlow, checkerboard) are superseded by the iMF pipeline and are not 
 
 ## Next step
 
-Build the embedded spiral once the human picks D (proposed 256), the scaling (proposed:
-unit variance per coordinate, corruption scaled to match the 2-D setup in the plane) and
-lr / EMA (proposed: official), then check clean faithful iMF on it before the sweep.
+When 59981814 finishes, take the smallest D whose W2@1 approaches the 0.122 floor and run
+the five briefed arms (plus clean-only, if the human agrees) at that D, seeds 42–44.
 
 ## Blocked on
 
