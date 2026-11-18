@@ -358,35 +358,36 @@ Redirections and events:
 
 ## Results
 
-Clean exact iMF on the spiral observed in D dimensions (job 59987798, seed 42, 50k steps;
-W2 in the plane on 4096 samples, floor 0.122; off-plane RMS 0 for clean data):
+Clean exact iMF on the spiral observed in D dimensions, 100k steps (job 60027106, seed 42;
+W2 in the plane on 4096 samples, floor 0.122; off-plane RMS 0 for clean data). Training
+records at 100k, and W2@1 at 90k for the plateau check:
 
-| D | W2@1 | W2@2 | off-plane RMS @1 | W2@1 at 40k |
+| D | W2@1 | W2@2 | off-plane RMS @1 | W2@1 at 90k |
 |---|---|---|---|---|
-| 2 | 0.742 | 0.363 | – | 0.756 |
-| 8 | 0.553 | 0.301 | 0.263 | 0.596 |
-| 16 | 0.413 | 0.241 | 0.209 | 0.428 |
-| 512 | 0.432 | 0.432 | 0.706 | 0.432 |
+| 2 | 0.724 | 0.341 | – | 0.722 |
+| 8 | 0.519 | 0.264 | 0.275 | 0.523 |
+| 16 | 0.389 | 0.219 | 0.240 | 0.390 |
+| 32 | 0.298 | 0.180 | 0.189 | 0.297 |
 
-The same checkpoints re-scored at more sampling steps (job 60026233; 1- and 2-step values
-reproduce the training records exactly; runs file records training evaluations only, so
-these come from `scripts.eval`, log `logs/60026233/eval.txt`):
+No D meets the rule (W2@1 ≤ 0.15, off-plane RMS ≤ 0.05); all have plateaued. Steps 50k→100k
+changed W2@1 little (D = 16: 0.413 → 0.389). Larger D helps up to 32, the largest tried here;
+at D = 512 (50k steps, job 59987798) nothing was learned in the plane (W2 0.432 at every step
+count, samples like the prior), as Pixel MeanFlow reports for u-prediction at high D.
+
+The same checkpoints re-scored at more sampling steps (job 60033355, `scripts.eval`, log
+`logs/60033355/eval.txt`; runs file holds training evaluations only):
 
 | D | W2@1 | W2@2 | W2@3 | W2@4 | W2@8 | off-plane RMS @8 |
 |---|---|---|---|---|---|---|
-| 2 | 0.742 | 0.363 | 0.254 | 0.232 | 0.249 | – |
-| 8 | 0.553 | 0.301 | 0.223 | 0.206 | 0.191 | 0.096 |
-| 16 | 0.413 | 0.241 | 0.189 | 0.174 | 0.146 | 0.079 |
-| 512 | 0.432 | 0.432 | 0.432 | 0.432 | 0.432 | 0.706 |
+| 2 | 0.724 | 0.341 | 0.234 | 0.218 | 0.244 | – |
+| 8 | 0.519 | 0.264 | 0.199 | 0.190 | 0.191 | 0.094 |
+| 16 | 0.389 | 0.219 | 0.175 | 0.166 | 0.147 | 0.077 |
+| 32 | 0.293 | 0.172 | 0.141 | 0.131 | 0.107 | 0.059 |
 
-More steps help every D but 512; D = 16 at 8 steps reaches 0.146, still above the floor and
-with samples off the plane, so the one-step model, the point of a flow map, is what fails.
-
-No D meets the selection rule (W2@1 ≤ 0.15, off-plane RMS ≤ 0.05). More dimensions help up
-to D = 16, where 2-step samples show the two arms faintly. At D = 512 nothing is learned in
-the plane: 1- and 2-step samples coincide and look like the Gaussian prior, as Pixel MeanFlow
-reports for u-prediction at high D. One seed.
-
+For D = 2, 8, 16 the 1- and 2-step re-scores equal the training records bitwise; for D = 32
+they differ (0.293 vs 0.298, 0.172 vs 0.180), cause not yet checked. With 8 steps D = 32
+gets below the floor in W2, but the one-step model, the point of a flow map, stays far off.
+One seed.
 
 First experiment, seed 42 only (sweep 59276661, cancelled), W2 at 50k steps on 4096
 samples; floor (two independent clean samples) 0.122, untrained model ~0.42:
@@ -405,14 +406,13 @@ numbers (MeanFlow, checkerboard) are superseded by the iMF pipeline and are not 
 
 ## Next step
 
-Job 60033355 (`more-steps.sbatch`, header as 60026233; starts after 60027106 succeeds) re-scores
-the 100k checkpoints at 1–8 steps for the figure (human: rebuild the dimension-sweep page
-with the 100k results). When job 60027106 finishes, apply the rule for D to its final records and report; the
-five-arm sweep runs at the chosen D only if one passes.
+Await the human's choice of how to make exact iMF learn the toy (Blocked on); no D passed
+the rule at 100k steps, so the five-arm sweep is not run.
 
 ## Blocked on
 
-**How to make exact iMF learn the toy (2026-11-18).** No D in {2, 8, 16, 512} passes (Results).
+**How to make exact iMF learn the toy (2026-11-18).** No D in {2, 8, 16, 32} passes at 100k steps, nor
+D = 512 at 50k (Results).
 Options: x-prediction as in Pixel MeanFlow (a change to the network's output, not to the iMF
 loss); a larger network or more steps at D = 16; or giving the network t (original MeanFlow).
 Each departs from exact iMF in a different way, which the human has ruled on before.
