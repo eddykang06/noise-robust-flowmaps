@@ -59,7 +59,9 @@ updated with `scontrol` to also accept `gpu_quad` (qos `gpuquad_qos`) and to a 2
 `test_learns_the_checkerboard_in_one_step`, exact iMF on a 2-D toy, which has failed since
 59185847 on main and is the failure this sweep investigates. The conditional resubmission
 59983432 therefore exited without training. Resubmitted (human: resubmit if it does not
-finish) as 59987798, the same script and header without the test step.
+finish) as 59987798, the same script and header without the test step. The same script,
+submitted as 59987864 with `--dependency=afternotok:59987798 --kill-on-invalid-dep=yes`,
+resumes the runs from their checkpoints only if 59987798 does not finish.
 
 Method design, fixed before any run. MeanFlow (Geng et al., 2025) uses the
 linear path z_t = (1−t)x + tε and learns the average velocity u(z_t, r, t).
