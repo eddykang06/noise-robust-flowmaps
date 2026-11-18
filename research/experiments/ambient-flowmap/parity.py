@@ -37,7 +37,9 @@ def loss_entries(out, name, net, batch, **kw):
     value.backward()
     out[f"{name}/loss"] = value.detach()
     out.update({f"{name}/log/{k}": v for k, v in logs.items()})
-    out.update({f"{name}/grad/{k}": p.grad.clone() for k, p in net.named_parameters()})
+    # Parameters the loss does not reach (e.g. imfDiT's unused embedders) have no gradient.
+    out.update({f"{name}/grad/{k}": None if p.grad is None else p.grad.clone()
+                for k, p in net.named_parameters()})
 
 
 def dump(path):
