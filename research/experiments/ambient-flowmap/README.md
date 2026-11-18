@@ -55,6 +55,10 @@ seed 42, 50k steps, D ∈ {2, 8, 16, 512} in parallel on one GPU):
 
 Submitted to `gpu` with a 3 h limit; while it was still pending (human, 2026-11-18) it was
 updated with `scontrol` to also accept `gpu_quad` (qos `gpuquad_qos`) and to a 2 h limit.
+It started at 00:06 on a `gpu_quad` GPU. At the human's request, job 59983432
+(`dim-sweep-resume.sbatch`, same header plus `--dependency=afternotok:59981814` and
+`--kill-on-invalid-dep=yes`) resumes the runs from their checkpoints only if 59981814 does
+not finish; it stops if the tests had failed.
 
 Method design, fixed before any run. MeanFlow (Geng et al., 2025) uses the
 linear path z_t = (1−t)x + tε and learns the average velocity u(z_t, r, t).
