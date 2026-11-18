@@ -321,6 +321,22 @@ Redirections and events:
 
 ## Results
 
+Clean exact iMF on the spiral observed in D dimensions (job 59987798, seed 42, 50k steps;
+W2 in the plane on 4096 samples, floor 0.122; off-plane RMS 0 for clean data):
+
+| D | W2@1 | W2@2 | off-plane RMS @1 | W2@1 at 40k |
+|---|---|---|---|---|
+| 2 | 0.742 | 0.363 | – | 0.756 |
+| 8 | 0.553 | 0.301 | 0.263 | 0.596 |
+| 16 | 0.413 | 0.241 | 0.209 | 0.428 |
+| 512 | 0.432 | 0.432 | 0.706 | 0.432 |
+
+No D meets the selection rule (W2@1 ≤ 0.15, off-plane RMS ≤ 0.05). More dimensions help up
+to D = 16, where 2-step samples show the two arms faintly. At D = 512 nothing is learned in
+the plane: 1- and 2-step samples coincide and look like the Gaussian prior, as Pixel MeanFlow
+reports for u-prediction at high D. One seed.
+
+
 First experiment, seed 42 only (sweep 59276661, cancelled), W2 at 50k steps on 4096
 samples; floor (two independent clean samples) 0.122, untrained model ~0.42:
 
@@ -338,14 +354,17 @@ numbers (MeanFlow, checkerboard) are superseded by the iMF pipeline and are not 
 
 ## Next step
 
-When the sweep finishes, choose D by this rule, fixed before its results: the smallest D
-whose final (50k-step) clean run has W2@1 ≤ 0.15 (floor 0.122) and off_plane_rms@1 ≤ 0.05
-(a model that learns the corruption sits near 0.58), with W2@1 no longer falling by more
-than 10% between the 40k and 50k evaluations. Then run the five briefed arms at that D,
-seed 42 only (`sweep.sbatch`, `DIM=<D>`). If no D passes, report it and ask before
-changing the network.
+Await the human's choice of how to proceed (Blocked on); the five-arm sweep is not run because
+no D met the rule fixed before the sweep: the smallest D whose final clean run has W2@1 ≤ 0.15
+and off_plane_rms@1 ≤ 0.05, with W2@1 falling less than 10% from 40k to 50k.
 
 ## Blocked on
+
+**How to make exact iMF learn the toy (2026-11-18).** No D in {2, 8, 16, 512} passes (Results).
+Options: x-prediction as in Pixel MeanFlow (a change to the network's output, not to the iMF
+loss); a larger network or more steps at D = 16; or giving the network t (original MeanFlow).
+Each departs from exact iMF in a different way, which the human has ruled on before.
+
 
 0. **GPU allowance.** Check jobs can wait hours with reason
    `AssocGrpGRESRunMinutes` (59122018 waited 16:06-20:47): the group's GPU run-minute limit is used
