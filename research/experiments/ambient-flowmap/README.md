@@ -405,7 +405,9 @@ numbers (MeanFlow, checkerboard) are superseded by the iMF pipeline and are not 
 
 ## Next step
 
-When job 60027106 finishes, apply the rule for D to its final records and report; the
+Job 60033355 (`more-steps.sbatch`, header as 60026233; starts after 60027106 succeeds) re-scores
+the 100k checkpoints at 1–8 steps for the figure (human: rebuild the dimension-sweep page
+with the 100k results). When job 60027106 finishes, apply the rule for D to its final records and report; the
 five-arm sweep runs at the chosen D only if one passes.
 
 ## Blocked on
