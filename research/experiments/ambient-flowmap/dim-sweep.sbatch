@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Pixel MeanFlow toy setup (arXiv 2601.22158, Sec. 5) for exact iMF: the clean two-armed
-# spiral observed in D dimensions (src/embed.py), D in {2, 8, 16, 32}, seed 42, 100k steps
-# (human, 2026-11-18: 100k default, D = 512 replaced by 32). Training only; the last
-# sweep, 59987798 (50k steps, 4 runs), took 58 min and peaked at 4.06 GB.
+# spiral observed in each D of DIMS (src/embed.py), in parallel, seed 42, 100k steps; then
+# re-scores the checkpoints at 1-8 sampling steps (more-steps.sbatch).
+#   DESC=... research/bin/submit ambient-flowmap <this> --export=ALL,DIMS="2 8 16 32"
+# Header sized for four D: 60027106 (D = 2, 8, 16, 32) took 1 h 54 min, peak 4.06 GB.
 #SBATCH --partition=gpu,gpu_quad
 #SBATCH --qos=gpuquad_qos
 #SBATCH --gres=gpu:1
@@ -20,11 +21,13 @@ echo "$(git rev-parse --short HEAD); logs in $LOGS"
 nvidia-smi --query-gpu=name --format=csv,noheader
 
 pids=()
-for D in 2 8 16 32; do
+for D in ${DIMS:?set DIMS}; do
   python -m scripts.train --config research/experiments/ambient-flowmap/spiral-imf.yaml \
     data.dim=$D model.dim=$D > "$LOGS/D$D.log" 2>&1 & pids+=($!)
 done
 status=0
 for pid in "${pids[@]}"; do wait $pid || status=1; done
 grep -H "wasserstein2" "$LOGS"/D*.log | grep "step 100000"
-exit $status
+[ $status = 0 ] || exit $status
+RUNS=$(for D in $DIMS; do echo "$(grep -om1 'imf-s42-[0-9a-f]*' "$LOGS/D$D.log" | cut -d- -f3):$D"; done)
+RUNS="$RUNS" bash research/experiments/ambient-flowmap/more-steps.sbatch
