@@ -49,7 +49,7 @@ metric:
   n_samples: 4096
 
 train:
-  steps: 50000            # toy: synthetic-experiment budget (human, 2026-11-10)
+  steps: 100000           # toy: synthetic-experiment budget (human, 2026-11-18; was 50k)
   batch_size: 1024
   lr: 1.0e-4
   adam_b2: 0.95

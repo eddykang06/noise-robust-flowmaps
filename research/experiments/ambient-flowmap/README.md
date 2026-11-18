@@ -30,6 +30,23 @@ forward passes.
 
 ## Current state
 
+**Redirection (human, 2026-11-18): 100k training steps is the default from now on** (was
+50k; set in this direction's spiral-imf.yaml, spiral-ambient.yaml and corrupt.yaml; main's
+configs/toy.yaml still has 50k). **The clean dimension sweep reruns at 100k steps with
+D ∈ {2, 8, 16, 32}** (D = 512 dropped): job 60027106, `dim-sweep.sbatch`, about 2 h
+expected (59987798 took 58 min at 50k). The rule for D keeps its form with the plateau check
+on the final 10k steps: W2@1 ≤ 0.15, off_plane_rms@1 ≤ 0.05, W2@1 falling less than 10% from
+90k to 100k.
+
+```
+#SBATCH --partition=gpu,gpu_quad
+#SBATCH --qos=gpuquad_qos
+#SBATCH --gres=gpu:1
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=6G
+#SBATCH --time=03:00:00
+```
+
 **Main cleanup pushed (human, 2026-11-18): db79e6d on main.** `sample_clean` moved to
 `src/toy.py`; `Batch.mask` covers a leading part of x's shape, broadcast by
 `path.expand_mask`, and iMF's loss_u/loss_v logs use the masked mean like the loss. Parity
@@ -388,9 +405,8 @@ numbers (MeanFlow, checkerboard) are superseded by the iMF pipeline and are not 
 
 ## Next step
 
-Await the human's choice of how to proceed (Blocked on); the five-arm sweep is not run because
-no D met the rule fixed before the sweep: the smallest D whose final clean run has W2@1 ≤ 0.15
-and off_plane_rms@1 ≤ 0.05, with W2@1 falling less than 10% from 40k to 50k.
+When job 60027106 finishes, apply the rule for D to its final records and report; the
+five-arm sweep runs at the chosen D only if one passes.
 
 ## Blocked on
 
