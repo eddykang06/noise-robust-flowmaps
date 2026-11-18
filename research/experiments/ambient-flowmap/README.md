@@ -365,7 +365,8 @@ Redirections and events:
 
 ## Results
 
-Clean exact iMF on the spiral observed in D dimensions, 100k steps (job 60027106, seed 42;
+Clean exact iMF on the spiral observed in D dimensions, 100k steps (jobs 60027106 and, for
+D = 64, 60038059; seed 42;
 W2 in the plane on 4096 samples, floor 0.122; off-plane RMS 0 for clean data). Training
 records at 100k, and W2@1 at 90k for the plateau check:
 
@@ -375,14 +376,16 @@ records at 100k, and W2@1 at 90k for the plateau check:
 | 8 | 0.519 | 0.264 | 0.275 | 0.523 |
 | 16 | 0.389 | 0.219 | 0.240 | 0.390 |
 | 32 | 0.298 | 0.180 | 0.189 | 0.297 |
+| 64 | 0.236 | 0.155 | 0.144 | 0.242 |
 
 No D meets the rule (W2@1 ≤ 0.15, off-plane RMS ≤ 0.05); all have plateaued. Steps 50k→100k
-changed W2@1 little (D = 16: 0.413 → 0.389). Larger D helps up to 32, the largest tried here;
+changed W2@1 little (D = 16: 0.413 → 0.389). Each doubling of D helps up to 64, the largest
+tried at 100k;
 at D = 512 (50k steps, job 59987798) nothing was learned in the plane (W2 0.432 at every step
 count, samples like the prior), as Pixel MeanFlow reports for u-prediction at high D.
 
-The same checkpoints re-scored at more sampling steps (job 60033355, `scripts.eval`, log
-`logs/60033355/eval.txt`; runs file holds training evaluations only):
+The same checkpoints re-scored at more sampling steps (jobs 60033355 and 60038059,
+`scripts.eval`, logs `logs/<job>/eval.txt`; runs file holds training evaluations only):
 
 | D | W2@1 | W2@2 | W2@3 | W2@4 | W2@8 | off-plane RMS @8 |
 |---|---|---|---|---|---|---|
@@ -390,10 +393,11 @@ The same checkpoints re-scored at more sampling steps (job 60033355, `scripts.ev
 | 8 | 0.519 | 0.264 | 0.199 | 0.190 | 0.191 | 0.094 |
 | 16 | 0.389 | 0.219 | 0.175 | 0.166 | 0.147 | 0.077 |
 | 32 | 0.293 | 0.172 | 0.141 | 0.131 | 0.107 | 0.059 |
+| 64 | 0.236 | 0.155 | 0.133 | 0.121 | 0.100 | 0.045 |
 
-For D = 2, 8, 16 the 1- and 2-step re-scores equal the training records bitwise; for D = 32
-they differ (0.293 vs 0.298, 0.172 vs 0.180), cause not yet checked. With 8 steps D = 32
-gets below the floor in W2, but the one-step model, the point of a flow map, stays far off.
+For D = 2, 8, 16, 64 the 1- and 2-step re-scores equal the training records bitwise; for D = 32
+they differ (0.293 vs 0.298, 0.172 vs 0.180), cause not yet checked. With 4 steps D = 64
+reaches the floor in W2 (0.121) with samples near the plane (RMS 0.049), but the one-step model, the point of a flow map, stays far off.
 One seed.
 
 First experiment, seed 42 only (sweep 59276661, cancelled), W2 at 50k steps on 4096
@@ -413,12 +417,12 @@ numbers (MeanFlow, checkerboard) are superseded by the iMF pipeline and are not 
 
 ## Next step
 
-When job 60038059 finishes, add D = 64 to the dimension-sweep page and Results; the
-five-arm sweep waits for the human.
+The five-arm sweep at D = 32 (human's choice; `sweep.sbatch`, DIM=32) waits for the human's go,
+now that D = 64 is in (Results).
 
 ## Blocked on
 
-**How to make exact iMF learn the toy (2026-11-18).** No D in {2, 8, 16, 32} passes at 100k steps, nor
+**How to make exact iMF learn the toy (2026-11-18).** No D in {2, 8, 16, 32, 64} passes at 100k steps, nor
 D = 512 at 50k (Results).
 Options: x-prediction as in Pixel MeanFlow (a change to the network's output, not to the iMF
 loss); a larger network or more steps at D = 16; or giving the network t (original MeanFlow).
