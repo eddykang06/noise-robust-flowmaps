@@ -1,7 +1,9 @@
 """The training loop, shared by every objective.
 
 A run lives in `<out_root>/<slug>/<run_id>/` (resolved config, checkpoint and,
-for the 2-D toys, `true-vs-generated.png` after the last step).
+for the toys, `true-vs-generated.png` after the last step). A toy is observed in
+`data.dim` dimensions (src/embed.py) and scored in its plane, with the RMS of the
+coordinates off the plane, which clean samples have at zero.
 At each evaluation milestone the EMA network is sampled, scored against fresh
 clean samples, checkpointed, and one record is appended to
 `<runs_dir>/<slug>.jsonl`. Rerunning the same config resumes from the
@@ -13,7 +15,7 @@ import json
 import os
 import subprocess
 import time
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from functools import partial
 from pathlib import Path
 
@@ -23,6 +25,7 @@ import yaml
 from src.config import Config, kwargs
 from src.corrupt import CORRUPTIONS
 from src.data import Batch, batches, sample_clean
+from src.embed import frame, observe, pad
 from src.metrics import METRICS
 from src.models import MODELS
 from src.objectives import OBJECTIVES
@@ -37,15 +40,15 @@ DTYPES = {"fp32": torch.float32, "bf16": torch.bfloat16}
 def build_dataset(cfg: Config) -> Batch:
     """The fixed training set: depends only on the data, corruption and seed."""
     gen = torch.Generator().manual_seed(cfg.seed)
-    data = sample_clean(cfg.data["name"], cfg.data["n"], gen)
-    data = CORRUPTIONS[cfg.corruption["name"]](data, gen, **kwargs(cfg.corruption))
+    data = pad(sample_clean(cfg.data["name"], cfg.data["n"], gen), cfg.data["dim"])
+    data = observe(CORRUPTIONS[cfg.corruption["name"]](data, gen, **kwargs(cfg.corruption)))
     return data if cfg.data["keep_noisy"] else data[data.sigma == 0]
 
 
 def reference(cfg: Config) -> Batch:
     """Fresh clean samples, disjoint in randomness from the training set."""
     gen = torch.Generator().manual_seed(10_000 + cfg.seed)
-    return sample_clean(cfg.data["name"], cfg.metric["n_samples"], gen)
+    return observe(pad(sample_clean(cfg.data["name"], cfg.metric["n_samples"], gen), cfg.data["dim"]))
 
 
 @torch.no_grad()
@@ -58,8 +61,15 @@ def samples(net, cfg: Config, ref: Batch) -> dict:
 
 
 def score(cfg: Config, generated: dict, ref: Batch) -> dict:
-    metric = METRICS[cfg.metric["name"]]
-    return {f"{cfg.metric['name']}@{steps}": metric(x, ref.x) for steps, x in generated.items()}
+    """The metric in the plane and, above 2-D, the RMS off it, for every step count."""
+    name, plane = cfg.metric["name"], frame(ref.x)[:, :2]
+    out = {}
+    for steps, x in generated.items():
+        x = frame(x)
+        out[f"{name}@{steps}"] = METRICS[name](x[:, :2], plane)
+        if x.shape[1] > 2:
+            out[f"off_plane_rms@{steps}"] = x[:, 2:].square().mean().sqrt().item()
+    return out
 
 
 def evaluate(net, cfg: Config, ref: Batch) -> dict:
@@ -68,15 +78,17 @@ def evaluate(net, cfg: Config, ref: Batch) -> dict:
 
 
 def figure_run(cfg: Config, data: Batch, ref: Batch, generated: dict) -> dict:
-    """What `src.plots` draws for one run: its records so far and the metric's
-    floor, the score of a second, independent clean sample."""
+    """What `src.plots` draws for one run, in the plane: its records so far and the
+    metric's floor, the score of a second, independent clean sample."""
     runs_file = REPO / cfg.runs_dir / f"{cfg.slug}.jsonl"
     records = [r for r in map(json.loads, runs_file.read_text().splitlines())
                if r["run_id"] == cfg.run_id]
     gen = torch.Generator().manual_seed(20_000 + cfg.seed)
     other = sample_clean(cfg.data["name"], len(ref), gen)
-    floor = METRICS[cfg.metric["name"]](other.x, ref.x)
-    return {"label": cfg.run_id, "data": data, "true": ref.x, "generated": generated,
+    plane = lambda x: frame(x)[:, :2]
+    floor = METRICS[cfg.metric["name"]](other.x, plane(ref.x))
+    return {"label": cfg.run_id, "data": replace(data, x=plane(data.x)), "true": plane(ref.x),
+            "generated": {steps: plane(x) for steps, x in generated.items()},
             "records": records, "metric": cfg.metric["name"], "floor": floor}
 
 

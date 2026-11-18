@@ -1,9 +1,9 @@
-"""True vs generated figures for the 2-D toys.
+"""True vs generated figures for the toys, drawn in the plane of the data (src/embed.py).
 
 One row per run: the training data (noisy samples in orange), the true
 distribution (fresh clean samples), the generated samples at each sampler step
-count, and the metric over training against its floor, the score of two
-independent clean samples.
+count, and the metrics over training (with the off-plane RMS above 2-D)
+against the floor, the score of two independent clean samples.
 """
 
 import matplotlib
@@ -30,7 +30,9 @@ def row(axes, run: dict):
     scatter(axes[0], data.x[~noisy], title)
     scatter(axes[1], run["true"], "true")
     for ax, (steps, x) in zip(axes[2:], run["generated"].items()):
-        scatter(ax, x, f"generated, {steps}-step\n{name} {last[f'{name}@{steps}']:.3f}")
+        off = last.get(f"off_plane_rms@{steps}")
+        scatter(ax, x, f"generated, {steps}-step\n{name} {last[f'{name}@{steps}']:.3f}"
+                + ("" if off is None else f", off-plane {off:.3f}"))
     ax = axes[-1]
     for key in last:
         ax.plot([r["step"] for r in run["records"]], [r["metrics"][key] for r in run["records"]],

@@ -6,6 +6,7 @@ import torch
 from src.config import load
 from src.corrupt import box_uniform_var, gaussian, gaussian_uniform_var
 from src.data import Batch, sample_clean
+from src.embed import basis, frame
 from src.metrics import wasserstein2
 from src.toy import TOYS
 from src.training import build_dataset, reference
@@ -81,3 +82,26 @@ def test_wasserstein2(gen):
     a, b = p[:, :1].double(), q[:, :1].double()
     sorted_w2 = (a.sort(0).values - b.sort(0).values).square().mean().sqrt().item()
     assert abs(wasserstein2(a, b) - sorted_w2) < 1e-9
+
+
+@pytest.mark.parametrize("dim", [2, 8, 512])
+def test_basis_is_fixed_and_orthogonal(dim):
+    q = basis(dim)
+    assert torch.equal(q, basis(dim))
+    assert torch.allclose(q.T @ q, torch.eye(dim), atol=1e-5)
+
+
+def test_embedded_dataset_lies_on_the_plane_and_noise_keeps_its_shape():
+    """Clean samples are the 2-D toy in the plane, with nothing off it; uniform
+    noise is added in the frame, so within the plane it stays inside its box."""
+    var = ["data.name=spiral", "data.dim=16", "model.dim=16"]
+    clean = build_dataset(load("configs/toy.yaml", ["slug=test", *var]))
+    gen = torch.Generator().manual_seed(42)
+    assert torch.allclose(frame(clean.x)[:, :2], sample_clean("spiral", len(clean), gen).x, atol=1e-5)
+    assert frame(clean.x)[:, 2:].abs().max() < 1e-5
+
+    box = ["corruption={name: box_uniform_var, var_max: 1.0, clean_frac: 0.3333}"]
+    obs = build_dataset(load("configs/toy.yaml", ["slug=test", *var, *box]))
+    noise = frame(obs.x - clean.x)[obs.sigma > 0] / obs.sigma[obs.sigma > 0, None]
+    assert noise.abs().max() <= 3 ** 0.5 + 1e-3
+    assert abs(noise.std() - 1.0) < 0.02

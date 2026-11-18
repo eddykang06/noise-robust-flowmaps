@@ -11,6 +11,7 @@ runs_dir: research/runs   # <slug>.jsonl evaluation records, relative to the rep
 data:
   name: spiral            # with its 0.1 radial jitter (0.02 after scaling)
   n: 10000                # toy: fixed training-set size
+  dim: 2                  # observed dimension D (src/embed.py); model.dim must match
   keep_noisy: true        # false drops corrupted samples (clean-only training)
 
 corruption:

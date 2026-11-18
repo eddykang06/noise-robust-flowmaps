@@ -9,6 +9,7 @@ runs_dir: runs            # <slug>.jsonl evaluation records, relative to the rep
 data:
   name: checkerboard
   n: 10000                # toy: fixed training-set size
+  dim: 2                  # observed dimension D (src/embed.py); model.dim must match
   keep_noisy: true        # false drops corrupted samples (clean-only training)
 
 corruption:
