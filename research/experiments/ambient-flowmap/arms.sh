@@ -1,5 +1,5 @@
-# The first experiment's five arms (brief, eddy 90d5ebd) as scripts.train arguments.
-# Source it, then `arm_args <1-5>` sets ARGS.
+# The first experiment's five arms (brief, eddy 90d5ebd) as scripts.train arguments, with
+# the spiral observed in $DIM dimensions (src/embed.py). Source it, then `arm_args <1-5>` sets ARGS.
 D=research/experiments/ambient-flowmap
 GAUSSIAN="corruption={name: gaussian_uniform_var, var_max: 1.0, clean_frac: 0.33}"
 UNIFORM="corruption={name: box_uniform_var, var_max: 1.0, clean_frac: 0.33}"
@@ -12,6 +12,7 @@ arm_args() {
     4) ARGS=(--config $D/spiral-ambient.yaml "$UNIFORM") ;;   # ambient, uniform
     5) ARGS=(--config $D/spiral-imf.yaml "$UNIFORM") ;;       # naive, uniform
   esac
+  ARGS+=(data.dim=$DIM model.dim=$DIM)
 }
 
 # Runs `<command> <arm>` for every arm in parallel on this node (one node, so appends to
