@@ -22,6 +22,7 @@ import yaml
 from src.config import Config, kwargs
 from src.corrupt import CORRUPTIONS
 from src.data import Batch, batches, sample_clean
+from src.embed import PLANE, observe, split
 from src.metrics import METRICS
 from src.models import MODELS
 from src.objectives import OBJECTIVES
@@ -31,29 +32,44 @@ REPO = Path(__file__).resolve().parents[1]
 DTYPES = {"fp32": torch.float32, "bf16": torch.bfloat16}
 
 
+def observed_dim(cfg: Config) -> int:
+    """`data.dim`, the dimension the toy is observed in (src/embed.py); 2 if unset."""
+    return cfg.data.get("dim", PLANE)
+
+
 def build_dataset(cfg: Config) -> Batch:
     """The fixed training set: depends only on the data, corruption and seed."""
     gen = torch.Generator().manual_seed(cfg.seed)
-    data = sample_clean(cfg.data["name"], cfg.data["n"], gen)
-    data = CORRUPTIONS[cfg.corruption["name"]](data, gen, **kwargs(cfg.corruption))
+    clean = sample_clean(cfg.data["name"], cfg.data["n"], gen)
+    corrupt = partial(CORRUPTIONS[cfg.corruption["name"]], gen=gen, **kwargs(cfg.corruption))
+    data = observe(clean, observed_dim(cfg), corrupt)
     return data if cfg.data["keep_noisy"] else data[data.sigma == 0]
 
 
 def reference(cfg: Config) -> Batch:
     """Fresh clean samples, disjoint in randomness from the training set."""
     gen = torch.Generator().manual_seed(10_000 + cfg.seed)
-    return sample_clean(cfg.data["name"], cfg.metric["n_samples"], gen)
+    clean = sample_clean(cfg.data["name"], cfg.metric["n_samples"], gen)
+    return observe(clean, observed_dim(cfg), corrupt=lambda batch: batch)
 
 
 @torch.no_grad()
 def evaluate(net, cfg: Config, ref: Batch) -> dict:
     """Scores every sampler step count on the same seeded noise, without
-    touching the training RNG."""
-    metric = METRICS[cfg.metric["name"]]
+    touching the training RNG. The metric compares samples with the reference
+    in the data's plane; above 2-D, `off_plane_rms` is the RMS of the other
+    coordinates, which is 0 for clean data."""
+    name, metric, dim = cfg.metric["name"], METRICS[cfg.metric["name"]], observed_dim(cfg)
     gen = torch.Generator(ref.x.device).manual_seed(cfg.seed)
     eps = torch.randn(ref.x.shape, generator=gen, device=ref.x.device)
-    return {f"{cfg.metric['name']}@{steps}": metric(draw(net, cfg, eps, steps, ref.cond), ref.x)
-            for steps in cfg.sampler["steps"]}
+    ref_plane, _ = split(ref.x, dim)
+    scores = {}
+    for steps in cfg.sampler["steps"]:
+        plane, rest = split(draw(net, cfg, eps, steps, ref.cond), dim)
+        scores[f"{name}@{steps}"] = metric(plane, ref_plane)
+        if rest is not None:
+            scores[f"off_plane_rms@{steps}"] = rest.square().mean().sqrt().item()
+    return scores
 
 
 def draw(net, cfg: Config, eps, steps: int, y=None):

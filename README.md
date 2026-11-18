@@ -27,6 +27,9 @@ Run all commands from the repository root.
 **Configure.** Each experiment is a YAML file in `configs/` that sets the data,
 corruption, model, objective, sampler, metric and training budget. Any value can be
 overridden on the command line as a dotted `key=value`, for example `train.steps=20000`.
+A 2-D toy can be observed in D dimensions, as in the Pixel MeanFlow toy, by setting
+`data.dim=D model.dim=D`: the toy then lies on a fixed random plane, and runs also report
+`off_plane_rms`, the RMS of the samples off that plane (`src/embed.py`).
 
 **Train.** Trains a model and evaluates it at fixed intervals. `slug` names the experiment.
 
