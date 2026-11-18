@@ -38,7 +38,8 @@ the pre-existing `test_learns_the_checkerboard_in_one_step` (still open: needs a
 iMF learns).
 
 **More sampling steps (human, 2026-11-18): job 60026233** re-scores the four
-dimension-sweep checkpoints at 1, 2, 3, 4 and 8 steps (`more-steps.sbatch`, no training):
+dimension-sweep checkpoints at 1, 2, 3, 4 and 8 steps (`more-steps.sbatch`, no training;
+completed in 4 min, MaxRSS 0.77 GB; Results):
 
 ```
 #SBATCH --partition=gpu,gpu_quad
@@ -349,6 +350,20 @@ W2 in the plane on 4096 samples, floor 0.122; off-plane RMS 0 for clean data):
 | 8 | 0.553 | 0.301 | 0.263 | 0.596 |
 | 16 | 0.413 | 0.241 | 0.209 | 0.428 |
 | 512 | 0.432 | 0.432 | 0.706 | 0.432 |
+
+The same checkpoints re-scored at more sampling steps (job 60026233; 1- and 2-step values
+reproduce the training records exactly; runs file records training evaluations only, so
+these come from `scripts.eval`, log `logs/60026233/eval.txt`):
+
+| D | W2@1 | W2@2 | W2@3 | W2@4 | W2@8 | off-plane RMS @8 |
+|---|---|---|---|---|---|---|
+| 2 | 0.742 | 0.363 | 0.254 | 0.232 | 0.249 | – |
+| 8 | 0.553 | 0.301 | 0.223 | 0.206 | 0.191 | 0.096 |
+| 16 | 0.413 | 0.241 | 0.189 | 0.174 | 0.146 | 0.079 |
+| 512 | 0.432 | 0.432 | 0.432 | 0.432 | 0.432 | 0.706 |
+
+More steps help every D but 512; D = 16 at 8 steps reaches 0.146, still above the floor and
+with samples off the plane, so the one-step model, the point of a flow map, is what fails.
 
 No D meets the selection rule (W2@1 ≤ 0.15, off-plane RMS ≤ 0.05). More dimensions help up
 to D = 16, where 2-step samples show the two arms faintly. At D = 512 nothing is learned in
