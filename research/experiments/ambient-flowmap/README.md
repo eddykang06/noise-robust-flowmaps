@@ -334,8 +334,12 @@ numbers (MeanFlow, checkerboard) are superseded by the iMF pipeline and are not 
 
 ## Next step
 
-When 59981814 finishes, take the smallest D whose W2@1 approaches the 0.122 floor and run
-the five briefed arms (plus clean-only, if the human agrees) at that D, seeds 42–44.
+When the sweep finishes, choose D by this rule, fixed before its results: the smallest D
+whose final (50k-step) clean run has W2@1 ≤ 0.15 (floor 0.122) and off_plane_rms@1 ≤ 0.05
+(a model that learns the corruption sits near 0.58), with W2@1 no longer falling by more
+than 10% between the 40k and 50k evaluations. Then run the five briefed arms (plus
+clean-only, if the human agrees) at that D, seeds 42–44; arm 1 at seeds 43–44 confirms the
+seed-42 choice. If no D passes, report it and ask before changing the network.
 
 ## Blocked on
 
