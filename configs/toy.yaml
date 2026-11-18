@@ -10,6 +10,7 @@ data:
   name: checkerboard
   n: 10000                # toy: fixed training-set size
   keep_noisy: true        # false drops corrupted samples (clean-only training)
+  # dim: 16               # observe the toy in D dimensions (src/embed.py); set model.dim to match
 
 corruption:
   name: none              # gaussian: add `sigma`, keep a `clean_frac` fraction clean

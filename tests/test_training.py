@@ -76,7 +76,10 @@ def test_interrupted_run_resumes_bitwise(tmp, reference_run, monkeypatch):
     ("corrupted", ["corruption={name: gaussian, sigma: 0.3, clean_frac: 0.1}"]),
     ("clean-only", ["corruption={name: gaussian, sigma: 0.3, clean_frac: 0.1}", "data.keep_noisy=false"]),
     ("bf16", ["train.precision=bf16"]),
+    ("embedded", ["data.dim=8", "model.dim=8"]),
 ])
 def test_arms_run(tmp, name, extra):
     run(tmp, name, ["train.steps=300", "train.eval_every=300", *extra])
-    assert all(math.isfinite(m) for m in metrics(tmp, name)[-1].values())
+    last = metrics(tmp, name)[-1]
+    assert all(math.isfinite(m) for m in last.values())
+    assert ("off_plane_rms@1" in last) == (name == "embedded")
