@@ -31,8 +31,8 @@ forward passes.
 ## Current state
 
 **Redirection (human, 2026-11-18): 100k training steps is the default from now on** (was
-50k; set in this direction's spiral-imf.yaml, spiral-ambient.yaml and corrupt.yaml; main's
-configs/toy.yaml still has 50k). **The clean dimension sweep reruns at 100k steps with
+50k; set in configs/toy.yaml, matching main, and in this direction's spiral-imf.yaml,
+spiral-ambient.yaml and corrupt.yaml). **The clean dimension sweep reruns at 100k steps with
 D ∈ {2, 8, 16, 32}** (D = 512 dropped): job 60027106, `dim-sweep.sbatch`, about 2 h
 expected (59987798 took 58 min at 50k). The rule for D keeps its form with the plateau check
 on the final 10k steps: W2@1 ≤ 0.15, off_plane_rms@1 ≤ 0.05, W2@1 falling less than 10% from
