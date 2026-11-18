@@ -154,3 +154,44 @@ def test_sampler_is_exact_with_the_exact_flow(steps):
     eps = torch.randn(4096, 2, dtype=torch.float64)
     x = sample(GaussianFlow(), eps, steps, None, omega=1.0, t_min=0.0, t_max=1.0)
     assert torch.allclose(x, A * eps, atol=1e-12)
+
+
+class PerResidue(torch.nn.Module):
+    """An iMF-signature network acting on each residue of `[B, L, 3]` on its own,
+    so padded residues cannot reach the outputs at real ones."""
+
+    num_classes = 0
+
+    def __init__(self):
+        super().__init__()
+        torch.manual_seed(0)
+        self.f = torch.nn.Sequential(torch.nn.Linear(4, 16), torch.nn.Tanh(), torch.nn.Linear(16, 6))
+
+    def forward(self, z, t, h, omega, t_min, t_max, y):
+        out = self.f(torch.cat([z, h[:, None, None].expand(*z.shape[:2], 1)], -1))
+        return out[..., :3], out[..., 3:]
+
+
+def test_loss_with_a_per_residue_mask_ignores_padding():
+    """A `[B, L]` mask on `[B, L, 3]` data: the loss, its gradients and the logs do
+    not depend on the padded residues, and equal the unpadded loss when nothing is padded."""
+    n, length = 8, 5
+    mask = (torch.arange(length) < torch.tensor([5, 3, 4, 2, 5, 1, 3, 4])[:, None]).float()
+    x = torch.randn(n, length, 3, generator=torch.Generator().manual_seed(1))
+    garbage = torch.where(mask[..., None].bool(), x, 100.0)
+
+    def run(data, mask):
+        net = PerResidue()
+        torch.manual_seed(2)
+        value, logs = imf.loss(net, Batch(x=data, sigma=torch.zeros(n), mask=mask), P_mean=-0.4,
+                               P_std=1.0, data_proportion=0.5, cfg_beta=1.0, class_dropout_prob=0.1,
+                               norm_p=1.0, norm_eps=0.01, guidance=False)
+        value.backward()
+        return value, logs, [p.grad for p in net.parameters()]
+
+    (a, logs_a, grads_a), (b, logs_b, grads_b) = run(x, mask), run(garbage, mask)
+    assert torch.allclose(a, b) and all(torch.allclose(g, h) for g, h in zip(grads_a, grads_b))
+    assert all(torch.allclose(logs_a[k], logs_b[k]) for k in logs_a)
+    full, logs_full, _ = run(x, None)
+    ones, logs_ones, _ = run(x, torch.ones(n, length))
+    assert torch.equal(full, ones) and all(torch.allclose(logs_full[k], logs_ones[k]) for k in logs_full)

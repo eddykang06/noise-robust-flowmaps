@@ -17,7 +17,7 @@ equals v_t) without its class-conditional machinery.
 import torch
 
 from src.data import Batch
-from src.path import bcast, interpolate, sq_err
+from src.path import bcast, interpolate, mean_sq_err, sq_err
 
 
 def logit_normal_dist(n, P_mean, P_std, device):
@@ -117,5 +117,6 @@ def loss(net, batch: Batch, P_mean: float, P_std: float, data_proportion: float,
     V, v = compound(net, z, t, r, omega, t_min, t_max, y, v_c)
     loss_u = adp_wt_fn(sq_err(V, v_g, batch.mask), norm_p, norm_eps)
     loss_v = adp_wt_fn(sq_err(v, v_g, batch.mask), norm_p, norm_eps)
-    logs = {"loss_u": ((V - v_g) ** 2).mean().detach(), "loss_v": ((v - v_g) ** 2).mean().detach()}
+    logs = {"loss_u": mean_sq_err(V, v_g, batch.mask).detach(),
+            "loss_v": mean_sq_err(v, v_g, batch.mask).detach()}
     return (loss_u + loss_v).mean(), logs

@@ -6,10 +6,10 @@ import torch.nn.functional as F
 
 from src.config import load
 from src.corrupt import gaussian
-from src.data import Batch, sample_clean
+from src.data import Batch
 from src.embed import basis, split
 from src.metrics import energy_distance
-from src.toy import TOYS
+from src.toy import TOYS, sample_clean
 from src.training import build_dataset, reference
 
 CORRUPT = ["slug=test", "corruption={name: gaussian, sigma: 0.3, clean_frac: 0.1}"]

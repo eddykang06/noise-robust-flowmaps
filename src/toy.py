@@ -4,6 +4,8 @@ import math
 
 import torch
 
+from src.data import Batch
+
 
 def checkerboard(n: int, gen: torch.Generator) -> torch.Tensor:
     """8 alternating unit squares on a 4x4 board centred at the origin."""
@@ -23,3 +25,8 @@ def spiral(n: int, gen: torch.Generator) -> torch.Tensor:
 
 
 TOYS = {"checkerboard": checkerboard, "spiral": spiral}
+
+
+def sample_clean(name: str, n: int, gen: torch.Generator) -> Batch:
+    """Fresh clean samples; used for the training set and as the evaluation reference."""
+    return Batch(x=TOYS[name](n, gen), sigma=torch.zeros(n))

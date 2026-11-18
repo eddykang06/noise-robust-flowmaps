@@ -21,12 +21,13 @@ import yaml
 
 from src.config import Config, kwargs
 from src.corrupt import CORRUPTIONS
-from src.data import Batch, batches, sample_clean
+from src.data import Batch, batches
 from src.embed import PLANE, observe, split
 from src.metrics import METRICS
 from src.models import MODELS
 from src.objectives import OBJECTIVES
 from src.sampling import SAMPLERS
+from src.toy import sample_clean
 
 REPO = Path(__file__).resolve().parents[1]
 DTYPES = {"fp32": torch.float32, "bf16": torch.bfloat16}
