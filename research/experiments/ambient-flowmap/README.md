@@ -30,6 +30,13 @@ forward passes.
 
 ## Current state
 
+**Redirection (human, 2026-11-18): try D = 64, and hold the five-arm sweep.** The human then
+chose D = 32 for the sweep although it fails the rule (clean W2@1 0.298), but asked for D = 64
+first and not to run the sweep yet. Job 60038059: clean `dim-sweep.sbatch` with DIMS=64,
+100k steps, then re-scored at 1–8 steps; header as 60027106 but `--mem=2G` (one run; four
+peaked at 4.06 GB). `sweep.sbatch` is resized for 100k steps (`--mem=6G`, `--time=04:00:00`)
+and not submitted.
+
 **Redirection (human, 2026-11-18): 100k training steps is the default from now on** (was
 50k; set in configs/toy.yaml, matching main, and in this direction's spiral-imf.yaml,
 spiral-ambient.yaml and corrupt.yaml). **The clean dimension sweep reruns at 100k steps with
@@ -406,8 +413,8 @@ numbers (MeanFlow, checkerboard) are superseded by the iMF pipeline and are not 
 
 ## Next step
 
-Await the human's choice of how to make exact iMF learn the toy (Blocked on); no D passed
-the rule at 100k steps, so the five-arm sweep is not run.
+When job 60038059 finishes, add D = 64 to the dimension-sweep page and Results; the
+five-arm sweep waits for the human.
 
 ## Blocked on
 
