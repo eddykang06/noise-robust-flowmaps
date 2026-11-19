@@ -41,7 +41,7 @@ the figures at the human's request).
 **Five arms re-scored at 1–8 steps: job 60108782** (`more-steps.sbatch`, RUNS keyed arm1–arm5;
 header as 60026233, `--mem=2G`; peak 0.79 GB). The first try, 60108503, failed on the ambient
 arms: the script assumed the `imf-s42-` prefix and ambient runs are `ambient_imf-s42-`; RUNS
-now takes full run names. Figures `arms-d64-*.png` are on the dimension-sweep page.
+now takes full run names. Figures `arms-d64-*.png` are on their own page (human: a separate artifact from the dimension sweep).
 
 **Redirection (human, 2026-11-19): run the five-arm sweep at D = 64** (not 32; D = 64 also fails
 the rule, clean W2@1 0.236, so arm differences are a signal, not a result). Job 60098738,
