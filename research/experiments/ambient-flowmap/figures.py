@@ -38,7 +38,7 @@ SETS = {
         "runs": {"1 clean": ("imf-s42-f5958283", "arm1"), "2 naive, Gaussian": ("imf-s42-cda379ef", "arm2"),
                  "3 ambient, Gaussian": ("ambient_imf-s42-f3ed2000", "arm3"), "4 ambient, uniform": ("ambient_imf-s42-c8f8ec04", "arm4"),
                  "5 naive, uniform": ("imf-s42-2500a6d4", "arm5")},
-        "jobs": ["60108503"], "colors": HUES},
+        "jobs": ["60108782"], "colors": HUES},
 }
 
 plt.rcParams.update({
@@ -75,7 +75,7 @@ def fig_steps(name, spec, evals, out):
     ax.set_xlabel("sampling steps used to generate")
     ax.set_ylabel(W2_LABEL)
     ax.set_title("Sample quality vs. number of sampling steps (final checkpoint)")
-    ax.legend(loc="upper right", fontsize=9)
+    ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1), fontsize=9)
     fig.text(0.01, -0.03, W2_NOTE, fontsize=8, color=MUTED)
     fig.savefig(out / f"{name}-steps.png")
     plt.close(fig)

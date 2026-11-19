@@ -38,8 +38,10 @@ Figures carry no reference lines (human). The
 dimension-sweep page now embeds these PNGs for the 100k sweep (the 50k runs were removed from
 the figures at the human's request).
 
-**Five arms re-scored at 1–8 steps: job 60108503** (`more-steps.sbatch`, RUNS keyed arm1–arm5;
-header as 60026233, `--mem=2G`, measured 1.0 GB in 60038059).
+**Five arms re-scored at 1–8 steps: job 60108782** (`more-steps.sbatch`, RUNS keyed arm1–arm5;
+header as 60026233, `--mem=2G`; peak 0.79 GB). The first try, 60108503, failed on the ambient
+arms: the script assumed the `imf-s42-` prefix and ambient runs are `ambient_imf-s42-`; RUNS
+now takes full run names. Figures `arms-d64-*.png` are on the dimension-sweep page.
 
 **Redirection (human, 2026-11-19): run the five-arm sweep at D = 64** (not 32; D = 64 also fails
 the rule, clean W2@1 0.236, so arm differences are a signal, not a result). Job 60098738,
@@ -401,10 +403,23 @@ W2 in the plane, floor 0.122; training records at 100k):
 | 4 ambient iMF, uniform | 0.340 | 0.248 | 0.207 | 0.255 |
 | 5 iMF, uniform, no adjustment | 0.346 | 0.302 | 0.341 | 0.373 |
 
-At 2 steps the ambient arms are closer to the clean arm than the naive arms (W2 0.25 vs 0.30)
-and their samples sit nearer the plane (off-plane RMS 0.20–0.25 vs 0.34–0.37 at 1 and 2 steps);
-at 1 step W2 does not separate them (0.32–0.35). Uniform and Gaussian corruption behave alike.
-One seed and a clean arm that misses the floor: a signal, not a result.
+Re-scored at 1–8 steps (job 60108782, logs `logs/60108782/eval.txt`; W2, then off-plane RMS @8):
+
+| arm | W2@1 | W2@2 | W2@3 | W2@4 | W2@8 | off-plane RMS @8 |
+|---|---|---|---|---|---|---|
+| 1 iMF, clean | 0.243 | 0.160 | 0.137 | 0.124 | 0.104 | 0.047 |
+| 2 iMF, Gaussian, no adjustment | 0.334 | 0.297 | 0.304 | 0.306 | 0.299 | 0.379 |
+| 3 ambient iMF, Gaussian | 0.358 | 0.256 | 0.259 | 0.262 | 0.251 | 0.302 |
+| 4 ambient iMF, uniform | 0.353 | 0.249 | 0.250 | 0.254 | 0.256 | 0.318 |
+| 5 iMF, uniform, no adjustment | 0.356 | 0.307 | 0.307 | 0.302 | 0.292 | 0.390 |
+
+No corrupted arm learns the spiral: at every step count their samples in the plane are a blob
+with no arms (figure `arms-d64-samples.png`). The ambient arms' lower W2 from 2 steps on (about
+0.25 vs 0.30) is a tighter blob nearer the plane, not a recovered spiral; more steps do not help
+any corrupted arm, while the clean arm keeps improving. Gaussian and uniform corruption behave
+alike. One seed. The re-scores ran on node compute-g-17-2 and differ from the training records
+by up to 0.012 (clean arm 0.243 vs 0.236 at 1 step; 60038059 on compute-g-17-1 matched it
+bitwise), so evaluation is not bitwise reproducible across GPU nodes; same kind of gap as D = 32.
 
 Clean exact iMF on the spiral observed in D dimensions, 100k steps (jobs 60027106 and, for
 D = 64, 60038059; seed 42;
@@ -458,7 +473,7 @@ numbers (MeanFlow, checkerboard) are superseded by the iMF pipeline and are not 
 
 ## Next step
 
-When re-score job 60108503 finishes, draw the five arms at 1–8 steps and add them to the page.
+Ask the human how to make the corrupted arms learn the spiral at all (none does at D = 64), together with the open question of making clean exact iMF reach the floor (Blocked on); seeds 43–44 only after that.
 
 ## Blocked on
 
