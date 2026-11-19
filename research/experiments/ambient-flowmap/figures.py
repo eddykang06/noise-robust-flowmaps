@@ -23,7 +23,7 @@ STEPS = [1, 2, 3, 4, 8]
 W2_LABEL = "W2 to the true spiral (lower is better)"
 W2_NOTE = ("W2: Wasserstein-2 distance between 4096 generated and 4096 true samples, "
            "measured in the spiral's 2-D plane.")
-PASS, FLOOR = 0.15, 0.122
+PASS = 0.15
 INK, MUTED, RULE = "#26282c", "#6b6f76", "#e3e4e6"
 BLUES = ["#6da7ec", "#3987e5", "#256abf", "#184f95", "#0d366b"]
 HUES = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#6250d6"]
@@ -65,11 +65,8 @@ def load(spec):
 
 def reference_lines(ax):
     ax.axhline(PASS, color="#1baf7a", linestyle="--", linewidth=1.2)
-    ax.axhline(FLOOR, color=MUTED, linestyle=":", linewidth=1.2)
     ax.text(0.01, PASS, "pass mark, W2 = 0.15", transform=ax.get_yaxis_transform(), va="bottom",
             ha="left", fontsize=8, color=MUTED)
-    ax.text(0.01, FLOOR, "floor, W2 = 0.122 (two true samples)", transform=ax.get_yaxis_transform(),
-            va="top", ha="left", fontsize=8, color=MUTED)
 
 
 def fig_steps(name, spec, evals, out):
