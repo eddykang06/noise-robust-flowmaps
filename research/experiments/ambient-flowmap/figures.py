@@ -22,7 +22,7 @@ LOGS = Path("/n/scratch/users/e/edk005/nrfm/ambient-flowmap/logs")
 STEPS = [1, 2, 3, 4, 8]
 PASS, FLOOR = 0.15, 0.122
 INK, MUTED, RULE = "#26282c", "#6b6f76", "#e3e4e6"
-BLUES = ["#86b6ef", "#5598e7", "#2a78d6", "#1c5cab", "#0d366b"]
+BLUES = ["#6da7ec", "#3987e5", "#256abf", "#184f95", "#0d366b"]
 HUES = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#6250d6"]
 
 SETS = {
@@ -43,7 +43,7 @@ SETS = {
 }
 
 plt.rcParams.update({
-    "font.size": 10, "axes.titlesize": 11, "axes.titleweight": "semibold", "axes.titlelocation": "left",
+    "font.size": 10, "axes.titlesize": 11, "axes.titleweight": "bold", "axes.titlelocation": "left",
     "text.color": INK, "axes.labelcolor": MUTED, "xtick.color": MUTED, "ytick.color": MUTED,
     "axes.edgecolor": RULE, "axes.spines.top": False, "axes.spines.right": False,
     "axes.grid": True, "grid.color": RULE, "grid.linewidth": 0.8, "axes.axisbelow": True,
@@ -73,29 +73,16 @@ def load(spec):
 def reference_lines(ax):
     ax.axhline(PASS, color="#1baf7a", linestyle="--", linewidth=1.2)
     ax.axhline(FLOOR, color=MUTED, linestyle=":", linewidth=1.2)
-    ax.text(1.0, PASS, " pass 0.15", transform=ax.get_yaxis_transform(), va="bottom", ha="right",
+    ax.text(0.01, PASS, "pass 0.15", transform=ax.get_yaxis_transform(), va="bottom", ha="left",
             fontsize=8, color=MUTED)
-    ax.text(1.0, FLOOR, " floor 0.122", transform=ax.get_yaxis_transform(), va="top", ha="right",
+    ax.text(0.01, FLOOR, "floor 0.122", transform=ax.get_yaxis_transform(), va="top", ha="left",
             fontsize=8, color=MUTED)
-
-
-def end_labels(ax, x, ys, texts, gap):
-    """Direct labels right of x, at ys nudged apart by at least `gap` (data units)."""
-    placed = {}
-    for i in sorted(range(len(ys)), key=lambda i: ys[i]):
-        y = ys[i] if not placed else max(ys[i], max(placed.values()) + gap)
-        placed[i] = y
-        ax.annotate(texts[i], (x, y), xytext=(8, 0), textcoords="offset points", va="center",
-                    fontsize=9, color=INK, annotation_clip=False)
 
 
 def fig_steps(name, spec, evals, out):
     fig, ax = plt.subplots(figsize=(6.4, 4))
     for (label, ev), color in zip(evals.items(), spec["colors"]):
         ax.plot(STEPS, [ev[f"wasserstein2@{s}"] for s in STEPS], color=color, marker="o", label=label)
-    finals = [ev["wasserstein2@8"] for ev in evals.values()]
-    end_labels(ax, STEPS[-1], finals, [f"{label}  {w:.3f}" for label, w in zip(evals, finals)],
-               gap=0.03 * max(ev["wasserstein2@1"] for ev in evals.values()))
     reference_lines(ax)
     ax.set_xscale("log", base=2)
     ax.set_xticks(STEPS, [str(s) for s in STEPS])
@@ -104,7 +91,7 @@ def fig_steps(name, spec, evals, out):
     ax.set_xlabel("sampling steps")
     ax.set_ylabel("W2 in the plane (lower is better)")
     ax.set_title("W2 by sampling steps, final checkpoint")
-    ax.legend(loc="upper right", fontsize=9, bbox_to_anchor=(0.8, 1))
+    ax.legend(loc="upper right", fontsize=9)
     fig.savefig(out / f"{name}-steps.png")
     plt.close(fig)
 
@@ -134,7 +121,7 @@ def fig_samples(name, spec, evals, samples, out, lim=2.3):
         for j, k in enumerate(cols):
             ax = axes[i, j]
             x = samples[label][k][:2048]
-            ax.scatter([p[0] for p in x], [p[1] for p in x], s=0.6, linewidths=0, alpha=0.6,
+            ax.scatter([p[0] for p in x], [p[1] for p in x], s=1.2, linewidths=0, alpha=0.75,
                        color=MUTED if k == "true" else color, rasterized=True)
             ax.set(xlim=(-lim, lim), ylim=(-lim, lim), xticks=[], yticks=[], aspect="equal")
             ax.grid(False)
@@ -149,7 +136,7 @@ def fig_samples(name, spec, evals, samples, out, lim=2.3):
             if j == 0:
                 ax.set_ylabel(label, fontsize=9, color=INK)
     fig.suptitle("Samples in the spiral's plane (W2 bottom left)", x=0.01, ha="left",
-                 fontsize=11, fontweight="semibold")
+                 fontsize=11, fontweight="bold")
     fig.tight_layout()
     fig.savefig(out / f"{name}-samples.png")
     plt.close(fig)
