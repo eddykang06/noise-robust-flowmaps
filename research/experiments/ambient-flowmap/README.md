@@ -30,6 +30,12 @@ forward passes.
 
 ## Current state
 
+**Redirection (human, 2026-11-19): every figure, past, current and future, is a clean
+matplotlib figure.** `figures.py` draws each sweep (steps, training curves, samples) from the
+runs file and the re-scoring logs; `figures.sbatch` runs it on a CPU node (`short`, 1 CPU, 1G,
+15 min; jobs 60098804, 60098975) into `$NRFM_OUT/ambient-flowmap/figures/`. The
+dimension-sweep page now embeds these PNGs, for the 100k sweep and the earlier 50k sweep.
+
 **Redirection (human, 2026-11-19): run the five-arm sweep at D = 64** (not 32; D = 64 also fails
 the rule, clean W2@1 0.236, so arm differences are a signal, not a result). Job 60098738,
 `sweep.sbatch` with DIM=64, seed 42, 100k steps; arm 1 is the finished D = 64 clean run
