@@ -29,5 +29,5 @@ status=0
 for pid in "${pids[@]}"; do wait $pid || status=1; done
 grep -H "wasserstein2" "$LOGS"/D*.log | grep "step 100000"
 [ $status = 0 ] || exit $status
-RUNS=$(for D in $DIMS; do echo "$(grep -om1 'imf-s42-[0-9a-f]*' "$LOGS/D$D.log" | cut -d- -f3):$D"; done)
+RUNS=$(for D in $DIMS; do echo "$(grep -om1 'imf-s42-[0-9a-f]*' "$LOGS/D$D.log"):$D"; done)
 RUNS="$RUNS" bash research/experiments/ambient-flowmap/more-steps.sbatch

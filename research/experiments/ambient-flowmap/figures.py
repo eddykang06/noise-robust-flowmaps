@@ -4,7 +4,7 @@ logs (more-steps.sbatch: eval.txt and plane-samples.json).
     python research/experiments/ambient-flowmap/figures.py <out_dir>
 
 Each set gets two figures: W2 against sampling steps, and a grid of samples. Each entry of SETS
-is one sweep: its runs (label -> (run hash, key in plane-samples.json, the
+is one sweep: its runs (label -> (run name, key in plane-samples.json, the
 <key> of more-steps' RUNS pairs)), the re-scoring jobs holding them, and how its series are coloured (ordinal: a light-to-dark blue ramp for D; categorical:
 fixed hue order for arms). A set is drawn only once all its inputs exist.
 """
@@ -30,14 +30,14 @@ HUES = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#6250d6"]
 SETS = {
     "dim-sweep-100k": {
         "title": "Clean exact iMF, spiral observed in D dimensions, 100k steps",
-        "runs": {"D = 2": ("7e4d5767", "2"), "D = 8": ("81dff414", "8"), "D = 16": ("4ec28c3d", "16"),
-                 "D = 32": ("95e1a81a", "32"), "D = 64": ("f5958283", "64")},
+        "runs": {"D = 2": ("imf-s42-7e4d5767", "2"), "D = 8": ("imf-s42-81dff414", "8"), "D = 16": ("imf-s42-4ec28c3d", "16"),
+                 "D = 32": ("imf-s42-95e1a81a", "32"), "D = 64": ("imf-s42-f5958283", "64")},
         "jobs": ["60033355", "60038059"], "colors": BLUES},
     "arms-d64": {
         "title": "Five arms at D = 64, 100k steps",
-        "runs": {"1 clean": ("f5958283", "arm1"), "2 naive, Gaussian": ("cda379ef", "arm2"),
-                 "3 ambient, Gaussian": ("f3ed2000", "arm3"), "4 ambient, uniform": ("c8f8ec04", "arm4"),
-                 "5 naive, uniform": ("2500a6d4", "arm5")},
+        "runs": {"1 clean": ("imf-s42-f5958283", "arm1"), "2 naive, Gaussian": ("imf-s42-cda379ef", "arm2"),
+                 "3 ambient, Gaussian": ("ambient_imf-s42-f3ed2000", "arm3"), "4 ambient, uniform": ("ambient_imf-s42-c8f8ec04", "arm4"),
+                 "5 naive, uniform": ("imf-s42-2500a6d4", "arm5")},
         "jobs": ["60108503"], "colors": HUES},
 }
 
@@ -53,7 +53,7 @@ plt.rcParams.update({
 
 def load(spec):
     """Re-scored metrics and plane samples for each run of a set."""
-    ids = {f"imf-s42-{h}": label for label, (h, _) in spec["runs"].items()}
+    ids = {run: label for label, (run, _) in spec["runs"].items()}
     evals, samples = {}, {}
     for job in spec["jobs"]:
         for line in (LOGS / job / "eval.txt").read_text().splitlines():
