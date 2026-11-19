@@ -1,9 +1,10 @@
-"""This direction's figures, as matplotlib PNGs, from the runs file and the re-scoring jobs'
+"""This direction's figures, as matplotlib PNGs, from the re-scoring jobs'
 logs (more-steps.sbatch: eval.txt and plane-samples.json).
 
     python research/experiments/ambient-flowmap/figures.py <out_dir>
 
-Each entry of SETS is one sweep: its runs (label -> (run hash, key in plane-samples.json, the
+Each set gets two figures: W2 against sampling steps, and a grid of samples. Each entry of SETS
+is one sweep: its runs (label -> (run hash, key in plane-samples.json, the
 <key> of more-steps' RUNS pairs)), the re-scoring jobs holding them, and how its series are coloured (ordinal: a light-to-dark blue ramp for D; categorical:
 fixed hue order for arms). A set is drawn only once all its inputs exist.
 """
@@ -17,7 +18,6 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-REPO = Path(__file__).resolve().parents[3]
 LOGS = Path("/n/scratch/users/e/edk005/nrfm/ambient-flowmap/logs")
 STEPS = [1, 2, 3, 4, 8]
 W2_LABEL = "W2 to the true spiral (lower is better)"
@@ -51,13 +51,8 @@ plt.rcParams.update({
 
 
 def load(spec):
-    """Training records, re-scored metrics and plane samples for each run of a set."""
+    """Re-scored metrics and plane samples for each run of a set."""
     ids = {f"imf-s42-{h}": label for label, (h, _) in spec["runs"].items()}
-    curves = {label: [] for label in spec["runs"]}
-    for line in (REPO / "research/runs/ambient-flowmap.jsonl").read_text().splitlines():
-        r = json.loads(line)
-        if r["run_id"] in ids:
-            curves[ids[r["run_id"]]].append((r["step"], r["metrics"]))
     evals, samples = {}, {}
     for job in spec["jobs"]:
         for line in (LOGS / job / "eval.txt").read_text().splitlines():
@@ -65,7 +60,7 @@ def load(spec):
             evals[ids[run]] = json.loads(metrics)
         by_dim = json.loads((LOGS / job / "plane-samples.json").read_text())
         samples.update({label: by_dim[key] for label, (_, key) in spec["runs"].items() if key in by_dim})
-    return {k: sorted(v, key=lambda r: r[0]) for k, v in curves.items()}, evals, samples
+    return evals, samples
 
 
 def reference_lines(ax):
@@ -92,24 +87,6 @@ def fig_steps(name, spec, evals, out):
     ax.legend(loc="upper right", fontsize=9)
     fig.text(0.01, -0.03, W2_NOTE, fontsize=8, color=MUTED)
     fig.savefig(out / f"{name}-steps.png")
-    plt.close(fig)
-
-
-def fig_training(name, spec, curves, out):
-    fig, axes = plt.subplots(1, 2, figsize=(10, 3.8), sharey=True)
-    for ax, s in zip(axes, [1, 2]):
-        for (label, recs), color in zip(curves.items(), spec["colors"]):
-            ax.plot([r[0] / 1000 for r in recs], [r[1][f"wasserstein2@{s}"] for r in recs],
-                    color=color, marker="o", label=label)
-        reference_lines(ax)
-        ax.set_title(f"Generated with {s} sampling step{'s' if s > 1 else ''}")
-        ax.set_xlabel("training step (thousands)")
-        ax.set_ylim(0, None)
-    axes[0].set_ylabel(W2_LABEL)
-    axes[1].legend(loc="upper right", fontsize=9)
-    fig.suptitle("Sample quality during training", x=0.01, ha="left", fontsize=12, fontweight="bold")
-    fig.text(0.01, -0.03, W2_NOTE, fontsize=8, color=MUTED)
-    fig.savefig(out / f"{name}-training.png")
     plt.close(fig)
 
 
@@ -150,12 +127,11 @@ def main(out):
         if not spec["runs"] or not all((LOGS / j / "eval.txt").exists() for j in spec["jobs"]):
             print(f"{name}: inputs missing, skipped")
             continue
-        curves, evals, samples = load(spec)
+        evals, samples = load(spec)
         evals = {label: evals[label] for label in spec["runs"]}
         fig_steps(name, spec, evals, out)
-        fig_training(name, spec, curves, out)
         fig_samples(name, spec, evals, samples, out)
-        print(f"{name}: wrote {name}-steps.png, -training.png, -samples.png")
+        print(f"{name}: wrote {name}-steps.png, -samples.png")
 
 
 if __name__ == "__main__":
