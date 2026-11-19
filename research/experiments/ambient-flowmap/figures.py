@@ -20,6 +20,9 @@ import matplotlib.pyplot as plt
 REPO = Path(__file__).resolve().parents[3]
 LOGS = Path("/n/scratch/users/e/edk005/nrfm/ambient-flowmap/logs")
 STEPS = [1, 2, 3, 4, 8]
+W2_LABEL = "W2 to the true spiral (lower is better)"
+W2_NOTE = ("W2: Wasserstein-2 distance between 4096 generated and 4096 true samples, "
+           "measured in the spiral's 2-D plane.")
 PASS, FLOOR = 0.15, 0.122
 INK, MUTED, RULE = "#26282c", "#6b6f76", "#e3e4e6"
 BLUES = ["#6da7ec", "#3987e5", "#256abf", "#184f95", "#0d366b"]
@@ -68,10 +71,10 @@ def load(spec):
 def reference_lines(ax):
     ax.axhline(PASS, color="#1baf7a", linestyle="--", linewidth=1.2)
     ax.axhline(FLOOR, color=MUTED, linestyle=":", linewidth=1.2)
-    ax.text(0.01, PASS, "pass 0.15", transform=ax.get_yaxis_transform(), va="bottom", ha="left",
-            fontsize=8, color=MUTED)
-    ax.text(0.01, FLOOR, "floor 0.122", transform=ax.get_yaxis_transform(), va="top", ha="left",
-            fontsize=8, color=MUTED)
+    ax.text(0.01, PASS, "pass mark, W2 = 0.15", transform=ax.get_yaxis_transform(), va="bottom",
+            ha="left", fontsize=8, color=MUTED)
+    ax.text(0.01, FLOOR, "floor, W2 = 0.122 (two true samples)", transform=ax.get_yaxis_transform(),
+            va="top", ha="left", fontsize=8, color=MUTED)
 
 
 def fig_steps(name, spec, evals, out):
@@ -83,10 +86,11 @@ def fig_steps(name, spec, evals, out):
     ax.set_xticks(STEPS, [str(s) for s in STEPS])
     ax.minorticks_off()
     ax.set_ylim(0, None)
-    ax.set_xlabel("sampling steps")
-    ax.set_ylabel("W2 in the plane (lower is better)")
-    ax.set_title("W2 by sampling steps, final checkpoint")
+    ax.set_xlabel("sampling steps used to generate")
+    ax.set_ylabel(W2_LABEL)
+    ax.set_title("Sample quality vs. number of sampling steps (final checkpoint)")
     ax.legend(loc="upper right", fontsize=9)
+    fig.text(0.01, -0.03, W2_NOTE, fontsize=8, color=MUTED)
     fig.savefig(out / f"{name}-steps.png")
     plt.close(fig)
 
@@ -98,11 +102,13 @@ def fig_training(name, spec, curves, out):
             ax.plot([r[0] / 1000 for r in recs], [r[1][f"wasserstein2@{s}"] for r in recs],
                     color=color, marker="o", label=label)
         reference_lines(ax)
-        ax.set_title(f"{s} sampling step{'s' if s > 1 else ''}")
+        ax.set_title(f"Generated with {s} sampling step{'s' if s > 1 else ''}")
         ax.set_xlabel("training step (thousands)")
         ax.set_ylim(0, None)
-    axes[0].set_ylabel("W2 in the plane")
+    axes[0].set_ylabel(W2_LABEL)
     axes[1].legend(loc="upper right", fontsize=9)
+    fig.suptitle("Sample quality during training", x=0.01, ha="left", fontsize=12, fontweight="bold")
+    fig.text(0.01, -0.03, W2_NOTE, fontsize=8, color=MUTED)
     fig.savefig(out / f"{name}-training.png")
     plt.close(fig)
 
@@ -123,16 +129,17 @@ def fig_samples(name, spec, evals, samples, out, lim=2.3):
             for side in ax.spines.values():
                 side.set_visible(True)
             if k != "true":
-                ax.text(0.04, 0.04, f"{evals[label][f'wasserstein2@{k}']:.3f}", transform=ax.transAxes,
+                ax.text(0.04, 0.04, f"W2 = {evals[label][f'wasserstein2@{k}']:.3f}", transform=ax.transAxes,
                         fontsize=8, color=INK)
             if i == 0:
-                ax.set_title("true" if k == "true" else f"{k} step{'s' if k != '1' else ''}",
+                ax.set_title("true spiral" if k == "true" else f"{k} sampling step{'s' if k != '1' else ''}",
                              fontsize=9, loc="center", fontweight="normal", color=MUTED)
             if j == 0:
                 ax.set_ylabel(label, fontsize=9, color=INK)
-    fig.suptitle("Samples in the spiral's plane (W2 bottom left)", x=0.01, ha="left",
+    fig.suptitle("Generated samples, projected onto the spiral's plane", x=0.01, ha="left",
                  fontsize=11, fontweight="bold")
     fig.tight_layout()
+    fig.text(0.01, -0.01, W2_NOTE, fontsize=8, color=MUTED)
     fig.savefig(out / f"{name}-samples.png")
     plt.close(fig)
 
