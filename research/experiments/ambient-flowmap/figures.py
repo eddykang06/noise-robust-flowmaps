@@ -31,11 +31,6 @@ SETS = {
         "runs": {"D = 2": ("7e4d5767", "2"), "D = 8": ("81dff414", "8"), "D = 16": ("4ec28c3d", "16"),
                  "D = 32": ("95e1a81a", "32"), "D = 64": ("f5958283", "64")},
         "jobs": ["60033355", "60038059"], "colors": BLUES},
-    "dim-sweep-50k": {
-        "title": "Clean exact iMF, spiral observed in D dimensions, 50k steps",
-        "runs": {"D = 2": ("61bb6b98", "2"), "D = 8": ("d84ff5b3", "8"), "D = 16": ("16b83d21", "16"),
-                 "D = 512": ("c1d083a4", "512")},
-        "jobs": ["60026233"], "colors": BLUES[:3] + BLUES[-1:]},
     "arms-d64": {
         "title": "Five arms at D = 64, 100k steps",
         "runs": {},  # filled from job 60098738's arm logs once it finishes
