@@ -32,8 +32,9 @@ forward passes.
 
 **Redirection (human, 2026-11-19): every figure, past, current and future, is a clean
 matplotlib figure.** `figures.py` draws each sweep (steps, training curves, samples) from the
-runs file and the re-scoring logs; `figures.sbatch` runs it on a CPU node (`short`, 1 CPU, 1G,
-15 min; jobs 60098804, 60098975) into `$NRFM_OUT/ambient-flowmap/figures/`. The
+runs file and the re-scoring logs; it runs directly in the agent session, which is on a
+compute node (human: no queued job for plotting), into `$NRFM_OUT/ambient-flowmap/figures/`.
+Figures carry no reference lines (human). The
 dimension-sweep page now embeds these PNGs for the 100k sweep (the 50k runs were removed from
 the figures at the human's request).
 
