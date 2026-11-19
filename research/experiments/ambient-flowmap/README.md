@@ -30,6 +30,20 @@ forward passes.
 
 ## Current state
 
+**Redirection (human, 2026-11-19): run the five-arm sweep at D = 64** (not 32; D = 64 also fails
+the rule, clean W2@1 0.236, so arm differences are a signal, not a result). Job 60098738,
+`sweep.sbatch` with DIM=64, seed 42, 100k steps; arm 1 is the finished D = 64 clean run
+(imf-s42-f5958283) and resumes as done; four arms train in parallel.
+
+```
+#SBATCH --partition=gpu,gpu_quad
+#SBATCH --qos=gpuquad_qos
+#SBATCH --gres=gpu:1
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=6G
+#SBATCH --time=04:00:00
+```
+
 **Redirection (human, 2026-11-18): try D = 64, and hold the five-arm sweep.** The human then
 chose D = 32 for the sweep although it fails the rule (clean W2@1 0.298), but asked for D = 64
 first and not to run the sweep yet. Job 60038059: clean `dim-sweep.sbatch` with DIMS=64,
@@ -417,8 +431,8 @@ numbers (MeanFlow, checkerboard) are superseded by the iMF pipeline and are not 
 
 ## Next step
 
-The five-arm sweep at D = 32 (human's choice; `sweep.sbatch`, DIM=32) waits for the human's go,
-now that D = 64 is in (Results).
+When job 60098738 finishes, report the five arms at D = 64 (W2 at 1 and 2 steps), re-score at
+1–8 steps, and add them to the page.
 
 ## Blocked on
 
