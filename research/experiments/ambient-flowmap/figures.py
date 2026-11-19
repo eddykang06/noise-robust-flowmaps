@@ -35,8 +35,10 @@ SETS = {
         "jobs": ["60033355", "60038059"], "colors": BLUES},
     "arms-d64": {
         "title": "Five arms at D = 64, 100k steps",
-        "runs": {},  # filled from job 60098738's arm logs once it finishes
-        "jobs": [], "colors": HUES},
+        "runs": {"1 clean": ("f5958283", "arm1"), "2 naive, Gaussian": ("cda379ef", "arm2"),
+                 "3 ambient, Gaussian": ("f3ed2000", "arm3"), "4 ambient, uniform": ("c8f8ec04", "arm4"),
+                 "5 naive, uniform": ("2500a6d4", "arm5")},
+        "jobs": ["60108503"], "colors": HUES},
 }
 
 plt.rcParams.update({

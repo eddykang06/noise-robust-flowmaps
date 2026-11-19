@@ -38,6 +38,9 @@ Figures carry no reference lines (human). The
 dimension-sweep page now embeds these PNGs for the 100k sweep (the 50k runs were removed from
 the figures at the human's request).
 
+**Five arms re-scored at 1–8 steps: job 60108503** (`more-steps.sbatch`, RUNS keyed arm1–arm5;
+header as 60026233, `--mem=2G`, measured 1.0 GB in 60038059).
+
 **Redirection (human, 2026-11-19): run the five-arm sweep at D = 64** (not 32; D = 64 also fails
 the rule, clean W2@1 0.236, so arm differences are a signal, not a result). Job 60098738,
 `sweep.sbatch` with DIM=64, seed 42, 100k steps; arm 1 is the finished D = 64 clean run
@@ -387,6 +390,22 @@ Redirections and events:
 
 ## Results
 
+First experiment at D = 64, 100k steps, seed 42 (job 60098738, 1 h 53 min, peak RAM 4.1 GB;
+W2 in the plane, floor 0.122; training records at 100k):
+
+| arm | W2@1 | W2@2 | off-plane RMS @1 | off-plane RMS @2 |
+|---|---|---|---|---|
+| 1 iMF, clean | 0.236 | 0.155 | 0.144 | – |
+| 2 iMF, Gaussian, no adjustment | 0.323 | 0.295 | 0.337 | 0.358 |
+| 3 ambient iMF, Gaussian | 0.349 | 0.253 | 0.201 | 0.248 |
+| 4 ambient iMF, uniform | 0.340 | 0.248 | 0.207 | 0.255 |
+| 5 iMF, uniform, no adjustment | 0.346 | 0.302 | 0.341 | 0.373 |
+
+At 2 steps the ambient arms are closer to the clean arm than the naive arms (W2 0.25 vs 0.30)
+and their samples sit nearer the plane (off-plane RMS 0.20–0.25 vs 0.34–0.37 at 1 and 2 steps);
+at 1 step W2 does not separate them (0.32–0.35). Uniform and Gaussian corruption behave alike.
+One seed and a clean arm that misses the floor: a signal, not a result.
+
 Clean exact iMF on the spiral observed in D dimensions, 100k steps (jobs 60027106 and, for
 D = 64, 60038059; seed 42;
 W2 in the plane on 4096 samples, floor 0.122; off-plane RMS 0 for clean data). Training
@@ -439,8 +458,7 @@ numbers (MeanFlow, checkerboard) are superseded by the iMF pipeline and are not 
 
 ## Next step
 
-When job 60098738 finishes, report the five arms at D = 64 (W2 at 1 and 2 steps), re-score at
-1–8 steps, and add them to the page.
+When re-score job 60108503 finishes, draw the five arms at 1–8 steps and add them to the page.
 
 ## Blocked on
 
