@@ -27,65 +27,105 @@ apply to it.
 
 ## Current state
 
-**Method.** Exact iMF (Geng et al., 2025): network from the official code (`src/models/`),
-objective and sampler ported from the official JAX code and checked against it
-(`tests/test_imf_reference.py`). One stated deviation: plain squared error (`norm_p: 0`, iMF
-uses 1.0), so the ambient target stays unbiased. Ambient iMF (`src/objectives/ambient_imf.py`)
-replaces the velocity target e − x of a noisy point by an unbiased estimate, used only for
-t > σ/(1+σ) + 0.05.
+### Data
 
-**Setup.** Two-armed spiral, 10,000 points, scaled to unit variance per coordinate (arm gap
-≈ 0.67), observed in D = 64 dimensions through a fixed rotation (`src/embed.py`), because exact
-iMF never sees t and cannot read it off a 2-D point. Toy MLP: hidden 256, 4 shared blocks, 2 per
-head. 100k steps, batch 1024, Adam lr 1e-4 (β₂ 0.95, 100 warmup steps), EMA 0.9999, fp32,
-seed 42. Metric (human, 2026-11-20): exact W2 in all 64 dimensions on 4096 samples
-(`wasserstein2_full`). Since clean data lie on the plane, W2(64-D)² = W2(plane)² + mean squared
-distance from the plane, and both parts are reported. "Off-plane RMS" in older tables is per
-coordinate: distance from the plane is √62 times it.
+- **Clean data.** Two-armed spiral, 10,000 points: angle θ = 3π√U, U ~ U[0, 1]; radius
+  θ + 0.1·N(0, 1); arm sign ±1; divided by 4.71 so each coordinate has unit variance. The gap
+  between the arms is about 0.67.
+- **Observed in D = 64.** Each 2-D point is padded with 62 zeros and rotated by a fixed random
+  orthogonal matrix Q (`src/embed.py`). Clean data lie on a 2-D plane in R⁶⁴. This is needed
+  because exact iMF never sees t; in 64-D it can read t from how much noise sits off the plane.
+- **Corruption.** Each point is kept clean with probability 0.75. Otherwise
+  y = x + σ·η with η in all 64 coordinates (added before the rotation): Gaussian, η ~ N(0, I);
+  or uniform, η ~ U[−√3, √3]⁶⁴ (same variance σ²). The training set records each point's σ
+  (0 if clean). One σ per run.
 
-**Fixed-σ sweep** (human, 2026-11-19), 75% clean, one noise level per job,
-σ ∈ {0.05, 0.1, 0.2, 0.33}, the five arms of the brief:
+### Training: iMF (arms 1, 2, 5)
 
-| arm | data | objective |
+Network f(z, h) → (u, v): a toy MLP (`src/models/mlp.py`) from the official iMF parts; input
+z ∈ R⁶⁴ and the embedding of h = t − r (guidance inputs fixed at ω = 1, [0, 1], null class).
+It never receives t. Hidden 256, 4 shared blocks, then a u-head and a v-head of 2 blocks each.
+u is the average velocity over [r, t]; v is the instantaneous velocity at t.
+
+Each step, for a batch of 1024 points x (naive arms use the noisy y as if clean):
+
+1. Sample t, r: draw two values from logit-normal(−0.4, 1), t = max, r = min. For the first
+   50% of the batch set r = t.
+2. Sample e ~ N(0, I₆₄); z = (1 − t)·x + t·e; target velocity v_t = e − x.
+3. Tangent v_c = v-head at (z, h = 0), no gradient.
+4. Forward with a JVP: u, du/dt = jvp(f, (z, t, r), tangents (v_c, 1, 0)); keep the v-head output v.
+5. Compound prediction V = u + (t − r)·stopgrad(du/dt).
+6. Loss = mean over the batch of ‖V − v_t‖² + ‖v − v_t‖² (sum over the 64 coordinates; plain
+   squared error, `norm_p = 0`; official iMF uses adaptive weighting, `norm_p = 1`).
+7. Adam (lr 1e-4, β = (0.9, 0.95)), learning rate linear from 0 over 100 steps then constant;
+   EMA of weights with decay 0.9999. 100k steps, fp32.
+
+### Training: ambient iMF (arms 3, 4)
+
+Same network, sampling and optimizer; only steps 2 and 6 change, per point with noise level σ
+(σ = 0 gives back iMF exactly):
+
+2′. c = σ²(1 − t)²/t². z = (1 − t)·y + t·√(1 − c)·e, which has the same distribution as a clean
+   point's z_t. Target v̂ = √(1 − c)·(1 + c / ((1 − t)(1 − c)))·e − y, an unbiased estimate of
+   the clean velocity: E[v̂ | z] = E[e − x | z].
+6′. A noisy point counts only if t > σ/(1 + σ) + 0.05 (its noise level on the path, plus a margin,
+   since v̂'s variance grows as 1/(1 − c)). Other points contribute 0 to the batch mean.
+
+Plain squared error is required: with adaptive weighting an unbiased target no longer gives the
+right minimiser. Ambient iMF assumes Gaussian noise, so arm 4 (uniform) tests it off-model.
+
+### Sampling and metric
+
+- **Sampler.** k steps on the grid t_i = 1 − i/k: start at z = e ~ N(0, I), then
+  z ← z − (t_i − t_{i+1})·u(z, h = t_i − t_{i+1}) with the EMA weights. Scored at k = 1, 2, 3, 4, 8.
+- **Metric** (human, 2026-11-20). W2 in all 64 dimensions between 4096 samples and 4096 fresh
+  clean points, exact by linear assignment (`wasserstein2_full`). Because clean data lie on the
+  plane, W2(64-D)² = W2(plane)² + mean squared distance from the plane, and both parts are
+  reported. "Off-plane RMS" in older tables is per coordinate: distance from the plane is √62 times it.
+
+### Experiments
+
+Five arms (brief), seed 42, 75% clean, one σ per job (`sweep.sbatch`, `DIM=64,SIGMA=<σ>`):
+
+| arm | data | training |
 |---|---|---|
-| 1 | all clean | iMF (finished run, 60038059) |
+| 1 | all clean | iMF (run 60038059, shared by every σ) |
 | 2 | Gaussian noise on 25% | iMF, noisy points as clean |
 | 3 | Gaussian noise on 25% | ambient iMF |
-| 4 | uniform noise (variance σ²) on 25% | ambient iMF |
-| 5 | uniform noise (variance σ²) on 25% | iMF, noisy points as clean |
+| 4 | uniform noise on 25% | ambient iMF |
+| 5 | uniform noise on 25% | iMF, noisy points as clean |
 
-`sweep.sbatch` with `DIM=64,SIGMA=<σ>`: jobs 60187230 (0.05), 60187234 (0.1), 60187287 (0.2),
-60187288 (0.33), all completed in 1 h 35 min – 1 h 53 min, peak 4.1–4.4 GB. Re-scoring at
-1–8 steps: 60194400 (`more-steps.sbatch`, `--mem=1200M` from 60108782's 0.79 GB peak).
+- **Fixed-σ sweep**, σ ∈ {0.05, 0.1, 0.2, 0.33}: jobs 60187230, 60187234, 60187287, 60187288
+  (1 h 35 min – 1 h 53 min, peak 4.1–4.4 GB); re-scored in 64-D by 60204483 (`more-steps.sbatch`).
+- **Running: strong-noise sweep** (human, 2026-11-20), σ ∈ {0.25, 0.5, 0.75, 1.0}: jobs
+  60207440, 60207441, 60207442, 60207443. σ = 1.0 is the top: there ambient keeps 47% of noisy
+  draws and their target's E‖·‖² is 4.4× a clean point's (at σ = 1.5: 29%, 7×).
+- **Tests** of the 64-D metric: 60207586 (`gpu-tests.sbatch`); 60204481 cancelled after Slurm
+  put its start two days out.
+
+Current `sweep.sbatch` header (the fixed-σ jobs ran with `--mem=6G`):
 
 ```
 #SBATCH --partition=gpu,gpu_quad
 #SBATCH --qos=gpuquad_qos
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=6G
-#SBATCH --time=02:30:00   (submitted at 04:00:00, lowered with scontrol while pending)
+#SBATCH --mem=7G
+#SBATCH --time=02:30:00
 ```
 
-**Running: strong-noise sweep** (human, 2026-11-20: coarser grid reaching higher noise), same
-five arms and setup, σ ∈ {0.25, 0.5, 0.75, 1.0}. σ = 1.0 is the top: there t_n = 0.5, ambient
-keeps 47% of noisy draws and their target's E|·|² is 4.4× a clean point's; at σ = 1.5 it would
-keep 29% at 7×. Jobs 60207440 (0.25), 60207441 (0.5), 60207442 (0.75), 60207443 (1.0), header as
-above with `--mem=7G` (1.5 × 4.4 GB) and `--time=02:30:00`. Tests of the 64-D metric: 60207586
-(`gpu-tests.sbatch`, now on gpu,gpu_quad; 60204481 cancelled after Slurm put its start 2 days out).
+### Standing decisions by the human
 
-**Standing decisions by the human**
-- 2026-11-20: no further seeds for the fixed-σ sweep.
-- 2026-11-19: one noise level per run, 75% clean (σ² ~ U[0, 1] per point left most noisy points
-  without structure: median σ 0.71 against an arm gap of 0.67). Sweep 60185808 cancelled.
-- 2026-11-19: D = 64; all figures are matplotlib (`figures.py`, run in the agent session).
+- 2026-11-20: W2 in all 64 dimensions is the metric for everything; no further seeds for the
+  fixed-σ sweep; strong-noise sweep up to σ = 1.0.
+- 2026-11-19: one noise level per run, 75% clean (σ² ~ U[0, 1] per point was too strong:
+  median σ 0.71 against an arm gap of 0.67; sweep 60185808 cancelled). D = 64. All figures are
+  matplotlib (`figures.py`, run in the agent session).
 - 2026-11-18: 100k steps; seed 42 only, so differences are single-seed signals, not results.
-- 2026-11-18: observe the spiral in D dimensions (Pixel MeanFlow toy, arXiv 2601.22158 Sec. 5).
+  Observe the spiral in D dimensions (Pixel MeanFlow toy, arXiv 2601.22158 Sec. 5).
 - 2026-11-11: exact iMF, so the network does not see t.
-- 2026-11-20: W2 in all 64 dimensions is the metric for everything from now on; in-plane W2
-  misses the off-plane error that full-dimensional noise causes.
-- 2026-11-10: W2 as the only metric; plain squared error; spiral keeps its 0.1 radial jitter;
-  `research/baseline.md` set aside; job emails at start and end; `--mem` ≈ 1.5× measured peak.
+- 2026-11-10: plain squared error; spiral keeps its 0.1 radial jitter; `research/baseline.md`
+  set aside; job emails at start and end; `--mem` ≈ 1.5× measured peak.
 
 ## Results
 
