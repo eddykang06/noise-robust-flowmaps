@@ -178,6 +178,13 @@ Five arms (brief), seed 42, 75% clean, one $\sigma$ per job (`sweep.sbatch`, `DI
   60226916 (22 min 43 s, peak 0.84 GB; `resample.sbatch`, sampling seeds 42, 1, 2, 3, 4 at
   $k = 1, 2, 8$), submitted with `--mail-type=BEGIN,END` over the header
   `--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=2 --mem=1200M --time=00:30:00`.
+- **Running: localize the one-step break**: ambient iMF, Gaussian, $\sigma = 1.0$ retrained with
+  evaluation every 2k steps (otherwise the sweep's config; evaluation does not touch the training
+  RNG), job 60233034 (`localize.sbatch`, `DIM=64,SIGMA=1.0,ARM=3,EVAL_EVERY=2000`), submitted with
+  `--mail-type=BEGIN,END` over the header
+  `--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=2 --mem=2G --time=02:30:00`.
+  The sweep run trained on a Tesla V100S; on another GPU type the trajectory need not match bitwise,
+  so a run without the break would not show the break was a fluke.
 - **Results page** for both sweeps (human, 2026-11-20): artifact "Ambient iMF Noise Sweep",
   figures from `figures.py` (all eight $\sigma$, both noise types, 64-D and in-plane $W_2$).
 - **Tests** of the 64-D metric: GPU suite 60207586 (65/67; the new split test had a bug in its
@@ -288,7 +295,7 @@ GPU nodes by up to 0.012 in $W_2$ (not bitwise reproducible across nodes).
 
 ## Next step
 
-Retrain ambient iMF, Gaussian, $\sigma = 1.0$ with a checkpoint every 10k steps to locate when its one-step map breaks, if `scripts/train.py` can save intermediate checkpoints without a code change; otherwise record that under Blocked on.
+When 60233034 finishes, read its 1-step $W_2^{64\text{D}}$ every 2k steps and report whether and when the one-step map breaks, and whether the training loss moves at the same step.
 
 ## Blocked on
 
