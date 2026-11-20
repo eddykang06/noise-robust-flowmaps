@@ -190,11 +190,16 @@ Five arms (brief), seed 42, 75% clean, one $\sigma$ per job (`sweep.sbatch`, `DI
   `--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=2 --mem=1800M --time=02:30:00`.
   The first submission, 60246388, failed after 22 s with an uncorrectable ECC error on the GPU of
   compute-g-17-168 (hardware), hence the exclusion.
-- **Running: naive control**: naive iMF, Gaussian, $\sigma = 1.0$ (arm 2) retrained with evaluation
-  every 2k steps at the sweep's lr, job 60256817 (`localize.sbatch`, `ARM=2`,
-  `OVERRIDES="train.eval_every=2000"`), submitted with `--mail-type=BEGIN,END --exclude=compute-g-17-168`
+- **Naive control**: naive iMF, Gaussian, $\sigma = 1.0$ (arm 2) retrained with evaluation every 2k
+  steps at the sweep's lr, job 60256817 (1 h 45 min, peak 1.04 GB, Quadro RTX 8000; `localize.sbatch`,
+  `ARM=2`, `OVERRIDES="train.eval_every=2000"`), submitted with `--mail-type=BEGIN,END --exclude=compute-g-17-168`
   over the header
   `--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=2 --mem=1700M --time=02:30:00`.
+- **Running: larger batch**: ambient iMF, Gaussian, $\sigma = 1.0$ at batch 4096 (4×, so a quarter
+  of the gradient variance per update; full lr, same 100k updates), job 60264427 (`localize.sbatch`,
+  `ARM=3`, `OVERRIDES="train.eval_every=2000 train.batch_size=4096"`), submitted with
+  `--mail-type=BEGIN,END --exclude=compute-g-17-168` over the header
+  `--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=2 --mem=1700M --time=04:00:00`.
 - **Results page** for both sweeps (human, 2026-11-20): artifact "Ambient iMF Noise Sweep",
   figures from `figures.py` (all eight $\sigma$, both noise types, 64-D and in-plane $W_2$).
 - **Tests** of the 64-D metric: GPU suite 60207586 (65/67; the new split test had a bug in its
@@ -294,7 +299,12 @@ but these are single-batch samples, so they do not locate the cause. At half the
 climbs smoothly to 1.18 at 90k and 1.30 at 100k (off-plane RMS 0.090 → 0.161), with no jump in
 90k–100k; 2-step is 1.49 at 100k (full lr: 1.33). So the late break needs the full step size, but
 both learning rates share a slow off-plane drift of the few-step map after about 50k steps while
-the in-plane 1-step value stays flat (0.25–0.29 at half lr). Across the same five seeds the other $\sigma = 1.0$ runs vary by up to 0.15 at
+the in-plane 1-step value stays flat (0.25–0.29 at half lr). Naive iMF on the same data (60256817) has
+no such drift: its 1-step $W_2^{64\text{D}}$ falls from 4.43 at 30k to 2.68 at 60k and keeps falling to
+2.53 at 100k (off-plane RMS 0.56 → 0.32, monotone after 30k; the sweep run on another GPU type
+gave 2.55). So the late drift is specific to ambient training, whose targets on kept noisy points
+carry $4.4\times$ a clean point's $\mathbb{E}\lVert\hat v\rVert^2$ at $\sigma = 1.0$; ambient iMF still
+stays nearer the plane than naive iMF at every checkpoint. Across the same five seeds the other $\sigma = 1.0$ runs vary by up to 0.15 at
 2 and 8 steps, which bounds how far single-draw differences at this $\sigma$ can be read. Seed 42
 training only: signals, not results.
 
@@ -316,7 +326,7 @@ GPU nodes by up to 0.012 in $W_2$ (not bitwise reproducible across nodes).
 
 ## Next step
 
-When 60256817 finishes, compare naive iMF's 1-step $W_2^{64\text{D}}$ curve after 50k with the two ambient runs': if naive iMF drifts off the plane too, the drift comes from training on noisy points at $\sigma = 1.0$ in general; if it stays flat, it is specific to the ambient target's high-variance updates.
+When 60264427 finishes, compare its 1-step $W_2^{64\text{D}}$ curve after 50k with 60233034's (batch 1024): if the drift is gone or much smaller at 4× the batch, it is gradient noise from the high-variance ambient targets, which supports gradient clipping or lr decay (under Blocked on) over a change to the target itself.
 
 ## Blocked on
 
