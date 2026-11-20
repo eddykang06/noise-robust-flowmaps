@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Full test suite (CPU and GPU) on this branch's checkout.
-#SBATCH --partition=gpu
+#SBATCH --partition=gpu,gpu_quad
+#SBATCH --qos=gpuquad_qos
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=2G
