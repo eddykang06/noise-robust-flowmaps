@@ -71,7 +71,8 @@ coordinate: distance from the plane is √62 times it.
 five arms and setup, σ ∈ {0.25, 0.5, 0.75, 1.0}. σ = 1.0 is the top: there t_n = 0.5, ambient
 keeps 47% of noisy draws and their target's E|·|² is 4.4× a clean point's; at σ = 1.5 it would
 keep 29% at 7×. Jobs 60207440 (0.25), 60207441 (0.5), 60207442 (0.75), 60207443 (1.0), header as
-above with `--mem=7G` (1.5 × 4.4 GB) and `--time=02:30:00`.
+above with `--mem=7G` (1.5 × 4.4 GB) and `--time=02:30:00`. Tests of the 64-D metric: 60207586
+(`gpu-tests.sbatch`, now on gpu,gpu_quad; 60204481 cancelled after Slurm put its start 2 days out).
 
 **Standing decisions by the human**
 - 2026-11-20: no further seeds for the fixed-σ sweep.
