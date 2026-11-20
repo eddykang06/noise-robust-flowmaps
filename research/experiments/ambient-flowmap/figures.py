@@ -40,6 +40,20 @@ SETS = {
                  "5 naive, uniform": ("imf-s42-2500a6d4", "arm5")},
         "jobs": ["60108782"], "colors": HUES},
 }
+# Fixed-sigma sweep, 75% clean (60187230/34/87/88, re-scored 60194400), one set per sigma;
+# arm 1 is the clean run re-scored in 60108782. Keys are <G|U><sigma*100><n|a>.
+SWEEP = {"0.05": ["imf-s42-d2f56231", "ambient_imf-s42-7da581e8", "ambient_imf-s42-5d62af51", "imf-s42-f1bcb92c"],
+         "0.1": ["imf-s42-44ec811d", "ambient_imf-s42-d9acc2f3", "ambient_imf-s42-72c3ce86", "imf-s42-3542192e"],
+         "0.2": ["imf-s42-a42acddd", "ambient_imf-s42-a41185d9", "ambient_imf-s42-93ed43a6", "imf-s42-3d397500"],
+         "0.33": ["imf-s42-8fc1b105", "ambient_imf-s42-a013d25f", "ambient_imf-s42-cc685b61", "imf-s42-d3226d19"]}
+ARMS = ["1 clean", "2 naive, Gaussian", "3 ambient, Gaussian", "4 ambient, uniform", "5 naive, uniform"]
+for sigma, runs in SWEEP.items():
+    tag = f"{round(float(sigma) * 100):02d}"
+    keys = [f"g{tag}n", f"g{tag}a", f"u{tag}a", f"u{tag}n"]
+    SETS[f"sigma-{sigma}"] = {
+        "title": f"Five arms, 75% clean, sigma = {sigma}",
+        "runs": dict(zip(ARMS, [("imf-s42-f5958283", "arm1"), *zip(runs, keys)])),
+        "jobs": ["60108782", "60194400"], "colors": HUES}
 
 plt.rcParams.update({
     "font.size": 10, "axes.titlesize": 11, "axes.titleweight": "bold", "axes.titlelocation": "left",
@@ -58,7 +72,8 @@ def load(spec):
     for job in spec["jobs"]:
         for line in (LOGS / job / "eval.txt").read_text().splitlines():
             run, metrics = line.split(" ", 1)
-            evals[ids[run]] = json.loads(metrics)
+            if run in ids:
+                evals[ids[run]] = json.loads(metrics)
         by_dim = json.loads((LOGS / job / "plane-samples.json").read_text())
         samples.update({label: by_dim[key] for label, (_, key) in spec["runs"].items() if key in by_dim})
     return evals, samples
@@ -112,6 +127,26 @@ def fig_samples(name, spec, evals, samples, out, lim=2.3):
     plt.close(fig)
 
 
+def fig_sigma(out):
+    """W2 at 1 and 2 steps against sigma, one line per arm, across the fixed-sigma sweep."""
+    sets = [SETS[f"sigma-{sigma}"] for sigma in SWEEP]
+    evals = [load(spec)[0] for spec in sets]
+    sigmas = [float(s) for s in SWEEP]
+    fig, axes = plt.subplots(1, 2, figsize=(9, 3.6), sharey=True)
+    for ax, k in zip(axes, [1, 2]):
+        for label, color in zip(ARMS, HUES):
+            ax.plot(sigmas, [ev[label][f"wasserstein2@{k}"] for ev in evals], color=color, marker="o", label=label)
+        ax.set_xticks(sigmas, list(SWEEP))
+        ax.set_xlabel("noise level sigma of the corrupted 25%")
+        ax.set_title(f"{k} sampling step{'s' if k > 1 else ''}")
+    axes[0].set_ylim(0, None)
+    axes[0].set_ylabel(W2_LABEL)
+    axes[1].legend(loc="upper left", bbox_to_anchor=(1.01, 1), fontsize=9)
+    fig.text(0.01, -0.04, W2_NOTE + " Seed 42 only.", fontsize=8, color=MUTED)
+    fig.savefig(out / "sweep-sigma.png")
+    plt.close(fig)
+
+
 def main(out):
     out.mkdir(parents=True, exist_ok=True)
     for name, spec in SETS.items():
@@ -123,6 +158,9 @@ def main(out):
         fig_steps(name, spec, evals, out)
         fig_samples(name, spec, evals, samples, out)
         print(f"{name}: wrote {name}-steps.png, -samples.png")
+    if (LOGS / "60194400" / "eval.txt").exists():
+        fig_sigma(out)
+        print("wrote sweep-sigma.png")
 
 
 if __name__ == "__main__":

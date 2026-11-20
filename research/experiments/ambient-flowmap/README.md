@@ -90,20 +90,24 @@ clean samples), and off-plane RMS (0 for clean data).
 Larger D helps up to 64; all runs have plateaued (W2@1 changes < 3% from 90k to 100k). At
 D = 64, 4 steps reach the W2 floor, but 1 step (0.236) does not.
 
-**Fixed-σ sweep, 75% clean**, D = 64, 100k steps, seed 42 (60187230/34/87/88), W2 at 1 and 2
-steps (arm 1, clean: 0.236 and 0.155):
+**Fixed-σ sweep, 75% clean**, D = 64, 100k steps, seed 42 (60187230/34/87/88; re-scored
+60194400). W2 at 1 / 2 / 8 steps, off-plane RMS at 8 in brackets; clean iMF (arm 1, 60108782):
+0.243 / 0.160 / 0.104 [0.047].
 
 | σ | 2 naive G | 3 ambient G | 4 ambient U | 5 naive U |
 |---|---|---|---|---|
-| 0.05 | 0.243 / 0.156 | 0.223 / 0.162 | 0.235 / 0.161 | 0.258 / 0.163 |
-| 0.1 | 0.261 / 0.164 | 0.216 / 0.155 | 0.254 / 0.178 | 0.255 / 0.168 |
-| 0.2 | 0.243 / 0.164 | 0.230 / 0.172 | 0.233 / 0.178 | 0.249 / 0.172 |
-| 0.33 | 0.250 / 0.173 | 0.259 / 0.188 | 0.246 / 0.185 | 0.263 / 0.179 |
+| 0.05 | 0.243 / 0.156 / 0.114 [0.048] | 0.223 / 0.162 / 0.117 [0.046] | 0.235 / 0.161 / 0.109 [0.046] | 0.258 / 0.163 / 0.105 [0.047] |
+| 0.1 | 0.261 / 0.167 / 0.107 [0.051] | 0.214 / 0.155 / 0.105 [0.047] | 0.252 / 0.177 / 0.114 [0.047] | 0.255 / 0.168 / 0.108 [0.050] |
+| 0.2 | 0.243 / 0.165 / 0.131 [0.056] | 0.228 / 0.170 / 0.127 [0.047] | 0.234 / 0.178 / 0.124 [0.047] | 0.249 / 0.177 / 0.132 [0.056] |
+| 0.33 | 0.249 / 0.171 / 0.140 [0.091] | 0.259 / 0.186 / 0.164 [0.061] | 0.244 / 0.184 / 0.174 [0.059] | 0.262 / 0.182 / 0.162 [0.089] |
 
-At 1 step the ambient arm is lower than its naive twin in 7 of 8 cells (by 0.001–0.045); at
-2 steps it is lower in 2 of 8. Every arm lies within 0.03 of clean iMF, and five of six ambient arms at
-σ ≤ 0.2 are below clean iMF at 1 step, so the spread is the size of single-seed noise: no
-result. The corruption at σ ≤ 0.33 with 75% clean barely hurts naive iMF.
+W2 at 1 step does not see the spiral: every arm, clean included, gives a blob at 1 step
+(0.21–0.26), so its differences are not evidence. The samples (figures.py, `sigma-*-samples`)
+show the effect of σ at 8 steps: at σ ≤ 0.1 every arm draws both arms of the spiral and W2@8
+is within 0.01 of clean; at σ = 0.2 the arms blur (W2@8 0.124–0.132); at σ = 0.33 no corrupted
+arm draws the spiral. Ambient iMF keeps samples on the plane (off-plane RMS 0.047 against 0.056
+naive at σ = 0.2, 0.06 against 0.09 at 0.33) but at σ = 0.33 its in-plane W2@8 is worse than
+naive (0.164, 0.174 against 0.140, 0.162). Single seed: no result either way.
 
 **Five arms, 33% clean, σ² ~ U[0, 1]**, D = 64, 100k steps, seed 42 (60098738; re-scored 60108782):
 
@@ -122,7 +126,7 @@ differs across GPU nodes by up to 0.012 in W2 (not bitwise reproducible across n
 
 ## Next step
 
-When 60194400 finishes, draw the sweep's figures (W2 against steps, samples) and give it its own page.
+Ask the human whether to spend seeds 43–44 on σ ∈ {0.2, 0.33}, the only levels where corruption hurts naive iMF.
 
 ## Blocked on
 
