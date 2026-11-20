@@ -30,6 +30,12 @@ forward passes.
 
 ## Current state
 
+- 2026-11-19 20:17, at the human's request: sweep 60185808 (75% clean, sigma^2 ~ U[0, 1]) cancelled
+  after 9 min, before any record. All sweeps are on hold until the noising scheme is settled: the
+  arm gap of the scaled spiral is about 0.67, and sigma^2 ~ U[0, 1] gives median sigma 0.71, so
+  most noisy points carry no structure. Proposed: fixed sigma in {0.05, 0.1, 0.2, 0.33}, or
+  per-point sigma ~ U[0, 0.3] or log-uniform on [0.02, 0.3].
+
 **Redirection (human, 2026-11-19): the corrupted data were too noisy; keep 75% clean (was 33%,
 the brief's value) and rerun the five arms at D = 64**, 100k steps, seed 42, same noise
 (σ² ~ U[0, 1], Gaussian or box-uniform, on all 64 coordinates). `arms.sh` now sets
@@ -479,7 +485,7 @@ numbers (MeanFlow, checkerboard) are superseded by the iMF pipeline and are not 
 
 ## Next step
 
-When the 75%-clean sweep finishes, re-score its arms at 1–8 steps and give it its own page.
+Settle the noising scheme with the human, then rerun the five-arm sweep with it.
 
 ## Blocked on
 
