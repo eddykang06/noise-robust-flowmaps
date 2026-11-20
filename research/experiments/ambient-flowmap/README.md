@@ -11,95 +11,165 @@ started: 2026-11-09
 
 ## Hypothesis
 
-On the two-armed spiral with 25% of training points corrupted by noise of known level σ,
+On the two-armed spiral with 25% of training points corrupted by noise of known level $\sigma$,
 ambient iMF (noisy points supervise the velocity only above their noise level, through an
-unbiased target) gives 1-step samples with lower W2 to the clean distribution than iMF that
+unbiased target) gives 1-step samples with lower $W_2$ to the clean distribution than iMF that
 treats the noisy points as clean.
 
 ## Kill criterion
 
 Fixed before the first run (checkerboard, MeanFlow, energy distance): the direction is dead if,
-in at least 2 of 3 noise levels σ ∈ {0.1, 0.3, 1.0}, ambient MeanFlow's mean 1-step energy
-distance is not lower than the better of naive and clean-only MeanFlow by more than 2 SE over
-seeds 42–44, at matched forward passes. The human ruled (2026-11-10) that the first
-experiment, on the spiral with iMF and W2, runs without a kill criterion; this one does not
+in at least 2 of 3 noise levels $\sigma \in \{0.1, 0.3, 1.0\}$, ambient MeanFlow's mean 1-step
+energy distance is not lower than the better of naive and clean-only MeanFlow by more than 2 SE
+over seeds 42–44, at matched forward passes. The human ruled (2026-11-10) that the first
+experiment, on the spiral with iMF and $W_2$, runs without a kill criterion; this one does not
 apply to it.
 
 ## Current state
 
 ### Data
 
-- **Clean data.** Two-armed spiral, 10,000 points: angle θ = 3π√U, U ~ U[0, 1]; radius
-  θ + 0.1·N(0, 1); arm sign ±1; divided by 4.71 so each coordinate has unit variance. The gap
-  between the arms is about 0.67.
-- **Observed in D = 64.** Each 2-D point is padded with 62 zeros and rotated by a fixed random
-  orthogonal matrix Q (`src/embed.py`). Clean data lie on a 2-D plane in R⁶⁴. This is needed
-  because exact iMF never sees t; in 64-D it can read t from how much noise sits off the plane.
-- **Corruption.** Each point is kept clean with probability 0.75. Otherwise
-  y = x + σ·η with η in all 64 coordinates (added before the rotation): Gaussian, η ~ N(0, I);
-  or uniform, η ~ U[−√3, √3]⁶⁴ (same variance σ²). The training set records each point's σ
-  (0 if clean). One σ per run.
+**Clean data.** A two-armed spiral of 10,000 points in $\mathbb{R}^2$:
+
+$$
+\theta = 3\pi\sqrt{U},\quad U \sim \mathcal{U}[0,1], \qquad
+\rho = \theta + 0.1\,\xi,\quad \xi \sim \mathcal{N}(0,1), \qquad
+x_{2\text{D}} = \pm\,\frac{\rho\,(\cos\theta,\ \sin\theta)}{4.71}
+$$
+
+The sign picks the arm; dividing by 4.71 gives each coordinate unit variance. The two arms are
+about 0.67 apart.
+
+**Observed in $D = 64$.** Each point is padded with 62 zeros and rotated by a fixed random
+orthogonal matrix $Q$ (`src/embed.py`), so clean data lie on a 2-D plane in $\mathbb{R}^{64}$:
+
+$$
+x = Q\,(x_{2\text{D}},\ 0,\dots,0) \in \mathbb{R}^{64}
+$$
+
+This is needed because exact iMF never sees $t$; in 64-D the network can read $t$ from how much
+noise sits off the plane.
+
+**Corruption.** Each point stays clean with probability 0.75. Otherwise it is observed as
+
+$$
+y = x + \sigma\,\eta, \qquad
+\eta \sim \mathcal{N}(0, I_{64}) \ \text{(Gaussian)} \quad\text{or}\quad
+\eta \sim \mathcal{U}[-\sqrt3, \sqrt3]^{64} \ \text{(uniform, same variance)}
+$$
+
+The noise is in all 64 coordinates. Every training point carries its own $\sigma$ ($0$ if clean);
+each run uses one $\sigma$.
 
 ### Training: iMF (arms 1, 2, 5)
 
-Network f(z, h) → (u, v): a toy MLP (`src/models/mlp.py`) from the official iMF parts; input
-z ∈ R⁶⁴ and the embedding of h = t − r (guidance inputs fixed at ω = 1, [0, 1], null class).
-It never receives t. Hidden 256, 4 shared blocks, then a u-head and a v-head of 2 blocks each.
-u is the average velocity over [r, t]; v is the instantaneous velocity at t.
+**Network.** $f_\theta(z, h) = (u, v)$ with $h = t - r$: a toy MLP (`src/models/mlp.py`) built from
+the official iMF parts (hidden width 256; 4 shared blocks, then a $u$-head and a $v$-head of 2
+blocks each). It never receives $t$ itself. $u$ is the average velocity over $[r, t]$, $v$ the
+instantaneous velocity at $t$.
 
-Each step, for a batch of 1024 points x (naive arms use the noisy y as if clean):
+**One training step**, on a batch of 1024 points $x$ (the naive arms use the noisy $y$ as if it
+were $x$):
 
-1. Sample t, r: draw two values from logit-normal(−0.4, 1), t = max, r = min. For the first
-   50% of the batch set r = t.
-2. Sample e ~ N(0, I₆₄); z = (1 − t)·x + t·e; target velocity v_t = e − x.
-3. Tangent v_c = v-head at (z, h = 0), no gradient.
-4. Forward with a JVP: u, du/dt = jvp(f, (z, t, r), tangents (v_c, 1, 0)); keep the v-head output v.
-5. Compound prediction V = u + (t − r)·stopgrad(du/dt).
-6. Loss = mean over the batch of ‖V − v_t‖² + ‖v − v_t‖² (sum over the 64 coordinates; plain
-   squared error, `norm_p = 0`; official iMF uses adaptive weighting, `norm_p = 1`).
-7. Adam (lr 1e-4, β = (0.9, 0.95)), learning rate linear from 0 over 100 steps then constant;
-   EMA of weights with decay 0.9999. 100k steps, fp32.
+1. **Times.** Draw $a, b \sim \operatorname{logit-normal}(-0.4,\ 1)$ and set
+   $t = \max(a,b)$, $r = \min(a,b)$. For half of the batch set $r = t$.
+2. **Noise the data.**
+   $$
+   e \sim \mathcal{N}(0, I_{64}), \qquad z = (1-t)\,x + t\,e, \qquad v_t = e - x
+   $$
+3. **Tangent.** $v_c = v\text{-head of } f_\theta(z, 0)$, with no gradient.
+4. **Forward and JVP.** $u$, $v$ from $f_\theta(z, t - r)$, and
+   $$
+   \frac{du}{dt} = \frac{\partial u}{\partial z}\,v_c + \frac{\partial u}{\partial t}
+   \qquad \text{(one Jacobian–vector product)}
+   $$
+5. **Compound prediction.**
+   $$
+   V = u + (t - r)\,\operatorname{sg}\!\left[\frac{du}{dt}\right]
+   $$
+   where $\operatorname{sg}$ is stop-gradient.
+6. **Loss** (plain squared error, summed over the 64 coordinates, averaged over the batch):
+   $$
+   \mathcal{L} = \mathbb{E}\Big[\ \lVert V - v_t \rVert^2 + \lVert v - v_t \rVert^2\ \Big]
+   $$
+   Official iMF divides by an adaptive weight (`norm_p = 1`); here `norm_p = 0`.
+7. **Update.** Adam, learning rate $10^{-4}$ (linear warm-up over 100 steps, then constant),
+   $\beta = (0.9,\ 0.95)$; EMA of the weights with decay 0.9999. 100k steps, fp32.
 
 ### Training: ambient iMF (arms 3, 4)
 
-Same network, sampling and optimizer; only steps 2 and 6 change, per point with noise level σ
-(σ = 0 gives back iMF exactly):
+Same network, times, JVP and optimizer. Only steps 2 and 6 change, per point with noise level
+$\sigma$; for $\sigma = 0$ both reduce exactly to iMF.
 
-2′. c = σ²(1 − t)²/t². z = (1 − t)·y + t·√(1 − c)·e, which has the same distribution as a clean
-   point's z_t. Target v̂ = √(1 − c)·(1 + c / ((1 − t)(1 − c)))·e − y, an unbiased estimate of
-   the clean velocity: E[v̂ | z] = E[e − x | z].
-6′. A noisy point counts only if t > σ/(1 + σ) + 0.05 (its noise level on the path, plus a margin,
-   since v̂'s variance grows as 1/(1 − c)). Other points contribute 0 to the batch mean.
+**2′. Noise the data, and the target.** Add only the noise the point is still missing:
+
+$$
+c = \frac{\sigma^2 (1-t)^2}{t^2}, \qquad
+z = (1-t)\,y + t\sqrt{1-c}\;e
+$$
+
+so $z$ has the same distribution as a clean point's $z_t$. The target is
+
+$$
+\hat v = \sqrt{1-c}\left(1 + \frac{c}{(1-t)(1-c)}\right) e \;-\; y,
+\qquad \mathbb{E}\big[\hat v \mid z\big] = \mathbb{E}\big[e - x \mid z\big]
+$$
+
+an unbiased estimate of the clean velocity. It replaces $v_t$ in steps 5 and 6.
+
+**6′. Which points count.** A noisy point contributes only when
+
+$$
+t > \frac{\sigma}{1+\sigma} + 0.05
+$$
+
+i.e. above its own noise level on the path, plus a margin because $\operatorname{Var}[\hat v]$
+grows like $1/(1-c)$. Other points contribute $0$ to the batch mean.
 
 Plain squared error is required: with adaptive weighting an unbiased target no longer gives the
 right minimiser. Ambient iMF assumes Gaussian noise, so arm 4 (uniform) tests it off-model.
 
 ### Sampling and metric
 
-- **Sampler.** k steps on the grid t_i = 1 − i/k: start at z = e ~ N(0, I), then
-  z ← z − (t_i − t_{i+1})·u(z, h = t_i − t_{i+1}) with the EMA weights. Scored at k = 1, 2, 3, 4, 8.
-- **Metric** (human, 2026-11-20). W2 in all 64 dimensions between 4096 samples and 4096 fresh
-  clean points, exact by linear assignment (`wasserstein2_full`). Because clean data lie on the
-  plane, W2(64-D)² = W2(plane)² + mean squared distance from the plane, and both parts are
-  reported. "Off-plane RMS" in older tables is per coordinate: distance from the plane is √62 times it.
+**Sampler.** With $k$ steps on the grid $t_i = 1 - i/k$, start from $z \sim \mathcal{N}(0, I_{64})$
+and repeat for $i = 0, \dots, k-1$:
+
+$$
+z \leftarrow z - (t_i - t_{i+1})\; u_\theta\big(z,\ h = t_i - t_{i+1}\big)
+$$
+
+using the EMA weights. Scored at $k = 1, 2, 3, 4, 8$.
+
+**Metric** (human, 2026-11-20). $W_2$ in all 64 dimensions between 4096 samples and 4096 fresh
+clean points, exact by linear assignment (`wasserstein2_full`). Because clean data lie on the
+plane, it splits exactly:
+
+$$
+W_2^{64\text{D}}\,{}^2 = W_2^{\text{plane}}\,{}^2 + \mathbb{E}\big[\operatorname{dist}(x, \text{plane})^2\big]
+$$
+
+and both parts are reported. "Off-plane RMS" in older tables is per coordinate; the distance
+from the plane is $\sqrt{62}$ times it.
 
 ### Experiments
 
-Five arms (brief), seed 42, 75% clean, one σ per job (`sweep.sbatch`, `DIM=64,SIGMA=<σ>`):
+Five arms (brief), seed 42, 75% clean, one $\sigma$ per job (`sweep.sbatch`, `DIM=64,SIGMA=<σ>`):
 
 | arm | data | training |
 |---|---|---|
-| 1 | all clean | iMF (run 60038059, shared by every σ) |
+| 1 | all clean | iMF (run 60038059, shared by every $\sigma$) |
 | 2 | Gaussian noise on 25% | iMF, noisy points as clean |
 | 3 | Gaussian noise on 25% | ambient iMF |
 | 4 | uniform noise on 25% | ambient iMF |
 | 5 | uniform noise on 25% | iMF, noisy points as clean |
 
-- **Fixed-σ sweep**, σ ∈ {0.05, 0.1, 0.2, 0.33}: jobs 60187230, 60187234, 60187287, 60187288
-  (1 h 35 min – 1 h 53 min, peak 4.1–4.4 GB); re-scored in 64-D by 60204483 (`more-steps.sbatch`).
-- **Running: strong-noise sweep** (human, 2026-11-20), σ ∈ {0.25, 0.5, 0.75, 1.0}: jobs
-  60207440, 60207441, 60207442, 60207443. σ = 1.0 is the top: there ambient keeps 47% of noisy
-  draws and their target's E‖·‖² is 4.4× a clean point's (at σ = 1.5: 29%, 7×).
+- **Fixed-σ sweep**, $\sigma \in \{0.05, 0.1, 0.2, 0.33\}$: jobs 60187230, 60187234, 60187287,
+  60187288 (1 h 35 min – 1 h 53 min, peak 4.1–4.4 GB); re-scored in 64-D by 60204483
+  (`more-steps.sbatch`).
+- **Running: strong-noise sweep** (human, 2026-11-20), $\sigma \in \{0.25, 0.5, 0.75, 1.0\}$: jobs
+  60207440, 60207441, 60207442, 60207443. $\sigma = 1.0$ is the top: there ambient keeps 47% of
+  noisy draws and their target's $\mathbb{E}\lVert\hat v\rVert^2$ is $4.4\times$ a clean point's
+  (at $\sigma = 1.5$: 29%, $7\times$).
 - **Tests** of the 64-D metric: 60207586 (`gpu-tests.sbatch`); 60204481 cancelled after Slurm
   put its start two days out.
 
@@ -116,22 +186,23 @@ Current `sweep.sbatch` header (the fixed-σ jobs ran with `--mem=6G`):
 
 ### Standing decisions by the human
 
-- 2026-11-20: W2 in all 64 dimensions is the metric for everything; no further seeds for the
-  fixed-σ sweep; strong-noise sweep up to σ = 1.0.
-- 2026-11-19: one noise level per run, 75% clean (σ² ~ U[0, 1] per point was too strong:
-  median σ 0.71 against an arm gap of 0.67; sweep 60185808 cancelled). D = 64. All figures are
-  matplotlib (`figures.py`, run in the agent session).
+- 2026-11-20: $W_2$ in all 64 dimensions is the metric for everything; no further seeds for the
+  fixed-σ sweep; strong-noise sweep up to $\sigma = 1.0$; math in the note renders as equations.
+- 2026-11-19: one noise level per run, 75% clean ($\sigma^2 \sim \mathcal{U}[0,1]$ per point was too
+  strong: median $\sigma$ 0.71 against an arm gap of 0.67; sweep 60185808 cancelled). $D = 64$.
+  All figures are matplotlib (`figures.py`, run in the agent session).
 - 2026-11-18: 100k steps; seed 42 only, so differences are single-seed signals, not results.
-  Observe the spiral in D dimensions (Pixel MeanFlow toy, arXiv 2601.22158 Sec. 5).
-- 2026-11-11: exact iMF, so the network does not see t.
+  Observe the spiral in $D$ dimensions (Pixel MeanFlow toy, arXiv 2601.22158 Sec. 5).
+- 2026-11-11: exact iMF, so the network does not see $t$.
 - 2026-11-10: plain squared error; spiral keeps its 0.1 radial jitter; `research/baseline.md`
   set aside; job emails at start and end; `--mem` ≈ 1.5× measured peak.
 
 ## Results
 
-**Clean iMF by dimension D**, 100k steps, seed 42 (60027106, 60038059; re-scored 60033355):
+**Clean iMF by dimension $D$**, 100k steps, seed 42 (60027106, 60038059; re-scored 60033355).
+In-plane $W_2$ at $k$ steps and per-coordinate off-plane RMS (older metric):
 
-| D | W2@1 | W2@2 | W2@4 | W2@8 | off-plane RMS @8 |
+| $D$ | $k=1$ | $k=2$ | $k=4$ | $k=8$ | off-plane RMS, $k=8$ |
 |---|---|---|---|---|---|
 | 2 | 0.724 | 0.341 | 0.218 | 0.244 | – |
 | 8 | 0.519 | 0.264 | 0.190 | 0.191 | 0.094 |
@@ -139,13 +210,14 @@ Current `sweep.sbatch` header (the fixed-σ jobs ran with `--mem=6G`):
 | 32 | 0.293 | 0.172 | 0.131 | 0.107 | 0.059 |
 | 64 | 0.236 | 0.155 | 0.121 | 0.100 | 0.045 |
 
-Larger D helps up to 64; all runs have plateaued (W2@1 changes < 3% from 90k to 100k). At
-D = 64, 4 steps reach the W2 floor, but 1 step (0.236) does not.
+Larger $D$ helps up to 64; all runs have plateaued ($W_2$ at $k=1$ changes < 3% from 90k to 100k).
+At $D = 64$, 4 steps reach the in-plane floor, but 1 step (0.236) does not.
 
-**Fixed-σ sweep, 75% clean**, D = 64, 100k steps, seed 42 (60187230/34/87/88; all arms
-re-scored in 64-D by 60204483). W2 in 64-D at 1 / 2 / 8 steps; clean iMF: 1.148 / 0.623 / 0.372.
+**Fixed-σ sweep, 75% clean**, $D = 64$, 100k steps, seed 42 (60187230/34/87/88; all arms
+re-scored by 60204483). $W_2^{64\text{D}}$ at $k = 1\,/\,2\,/\,8$ steps; clean iMF:
+1.148 / 0.623 / 0.372.
 
-| σ | 2 naive G | 3 ambient G | 4 ambient U | 5 naive U |
+| $\sigma$ | 2 naive, Gaussian | 3 ambient, Gaussian | 4 ambient, uniform | 5 naive, uniform |
 |---|---|---|---|---|
 | 0.05 | 1.104 / 0.633 / 0.394 | 1.126 / 0.638 / 0.384 | 1.139 / 0.641 / 0.380 | 1.161 / 0.660 / 0.388 |
 | 0.1 | 1.039 / 0.592 / 0.416 | 1.041 / 0.585 / 0.386 | 1.104 / 0.603 / 0.388 | 1.048 / 0.587 / 0.412 |
@@ -153,16 +225,18 @@ re-scored in 64-D by 60204483). W2 in 64-D at 1 / 2 / 8 steps; clean iMF: 1.148 
 | 0.33 | 0.996 / 0.693 / 0.743 | 0.837 / 0.570 / 0.514 | 0.743 / 0.545 / 0.494 | 0.984 / 0.667 / 0.719 |
 
 From 4 steps on, ambient iMF is below naive iMF in every cell, for both noise types, and the gap
-grows with σ; ambient stays within 0.02 of clean iMF up to σ = 0.2. The gain is off the plane:
-at σ = 0.33 naive iMF puts 5% of its 8-step samples more than 2 from the plane (the noisy
-training points sit 2.6 off it), ambient 1%. In the plane ambient is equal or slightly worse
-(8 steps, σ = 0.33: 0.164 against 0.140), plausibly the cost of its noisier target (noisy
-points' E|target|² 102 against 66 for clean at σ = 0.33). One step is far from clean for every
-arm, clean included (W2 ≈ 1.0–1.15, almost all off the plane). Seed 42 only: signals, not results.
+grows with $\sigma$; ambient stays within 0.02 of clean iMF up to $\sigma = 0.2$. The gain is off
+the plane: at $\sigma = 0.33$ naive iMF puts 5% of its 8-step samples more than 2 from the plane
+(the noisy training points sit 2.6 off it), ambient 1%. In the plane ambient is equal or slightly
+worse ($k = 8$, $\sigma = 0.33$: 0.164 against 0.140), plausibly the cost of its noisier target
+($\mathbb{E}\lVert\hat v\rVert^2$ 102 for noisy points against 66 for clean at $\sigma = 0.33$).
+One step is far from clean for every arm, clean included ($W_2^{64\text{D}} \approx 1.0$–$1.15$,
+almost all off the plane). Seed 42 only: signals, not results.
 
-**Five arms, 33% clean, σ² ~ U[0, 1]**, D = 64, 100k steps, seed 42 (60098738; re-scored 60108782):
+**Five arms, 33% clean, $\sigma^2 \sim \mathcal{U}[0,1]$**, $D = 64$, 100k steps, seed 42
+(60098738; re-scored 60108782). In-plane $W_2$ and per-coordinate off-plane RMS (older metric):
 
-| arm | W2@1 | W2@2 | W2@8 | off-plane RMS @8 |
+| arm | $k=1$ | $k=2$ | $k=8$ | off-plane RMS, $k=8$ |
 |---|---|---|---|---|
 | 1 iMF, clean | 0.243 | 0.160 | 0.104 | 0.047 |
 | 2 iMF, Gaussian | 0.334 | 0.297 | 0.299 | 0.379 |
@@ -171,9 +245,9 @@ arm, clean included (W2 ≈ 1.0–1.15, almost all off the plane). Seed 42 only:
 | 5 iMF, uniform | 0.356 | 0.307 | 0.292 | 0.390 |
 
 No corrupted arm learns the spiral: samples are a blob with no arms at every step count. The
-ambient arms' lower W2 from 2 steps on is a tighter blob nearer the plane, not a recovered
-spiral. The noise was too strong (see above), which the running sweep corrects. Evaluation
-differs across GPU nodes by up to 0.012 in W2 (not bitwise reproducible across nodes).
+ambient arms' lower $W_2$ from 2 steps on is a tighter blob nearer the plane, not a recovered
+spiral. The noise was too strong, which the fixed-σ sweeps correct. Evaluation differs across
+GPU nodes by up to 0.012 in $W_2$ (not bitwise reproducible across nodes).
 
 ## Next step
 
@@ -181,14 +255,14 @@ When the strong-noise jobs finish, re-score them at 1–8 steps in 64-D and add 
 
 ## Blocked on
 
-**One-step quality of exact iMF on the toy (2026-11-18).** Even clean iMF does not reach the
-W2 floor in one step at any D tried. Options, each a departure from exact iMF for the human to
-rule on: x-prediction as in Pixel MeanFlow; a larger network or more steps; giving the network t.
+**One-step quality of exact iMF on the toy (2026-11-18).** Even clean iMF is far from clean data
+in one step at every $D$ tried. Options, each a departure from exact iMF for the human to rule
+on: $x$-prediction as in Pixel MeanFlow; a larger network or more steps; giving the network $t$.
 
 ## Dead ends
 
-- MeanFlow with adaptive weighting (p = 1) on the checkerboard degrades with training (59157265).
-- Exact iMF on the 2-D spiral: W2@1 ≈ 0.72 at every lr and EMA tried (59281303); the network cannot read t.
-- Giving the network t fixes the 2-D toy (W2@1 0.113, 59285877) but is not exact iMF (ruled out 2026-11-11).
-- D = 512: nothing learned in the plane at 50k steps (59987798), as Pixel MeanFlow reports for u-prediction.
-- σ² ~ U[0, 1] per noisy point: too strong to leave any structure (60098738).
+- MeanFlow with adaptive weighting ($p = 1$) on the checkerboard degrades with training (59157265).
+- Exact iMF on the 2-D spiral: in-plane $W_2 \approx 0.72$ at 1 step for every lr and EMA tried (59281303); the network cannot read $t$.
+- Giving the network $t$ fixes the 2-D toy ($W_2$ 0.113 at 1 step, 59285877) but is not exact iMF (ruled out 2026-11-11).
+- $D = 512$: nothing learned in the plane at 50k steps (59987798), as Pixel MeanFlow reports for $u$-prediction.
+- $\sigma^2 \sim \mathcal{U}[0,1]$ per noisy point: too strong to leave any structure (60098738).
