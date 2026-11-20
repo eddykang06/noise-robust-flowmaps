@@ -94,30 +94,23 @@ coordinate: distance from the plane is √62 times it.
 Larger D helps up to 64; all runs have plateaued (W2@1 changes < 3% from 90k to 100k). At
 D = 64, 4 steps reach the W2 floor, but 1 step (0.236) does not.
 
-**Fixed-σ sweep, 75% clean**, D = 64, 100k steps, seed 42 (60187230/34/87/88; re-scored
-60194400). W2 at 1 / 2 / 8 steps, off-plane RMS at 8 in brackets; clean iMF (arm 1, 60108782):
-0.243 / 0.160 / 0.104 [0.047].
+**Fixed-σ sweep, 75% clean**, D = 64, 100k steps, seed 42 (60187230/34/87/88; all arms
+re-scored in 64-D by 60204483). W2 in 64-D at 1 / 2 / 8 steps; clean iMF: 1.148 / 0.623 / 0.372.
 
 | σ | 2 naive G | 3 ambient G | 4 ambient U | 5 naive U |
 |---|---|---|---|---|
-| 0.05 | 0.243 / 0.156 / 0.114 [0.048] | 0.223 / 0.162 / 0.117 [0.046] | 0.235 / 0.161 / 0.109 [0.046] | 0.258 / 0.163 / 0.105 [0.047] |
-| 0.1 | 0.261 / 0.167 / 0.107 [0.051] | 0.214 / 0.155 / 0.105 [0.047] | 0.252 / 0.177 / 0.114 [0.047] | 0.255 / 0.168 / 0.108 [0.050] |
-| 0.2 | 0.243 / 0.165 / 0.131 [0.056] | 0.228 / 0.170 / 0.127 [0.047] | 0.234 / 0.178 / 0.124 [0.047] | 0.249 / 0.177 / 0.132 [0.056] |
-| 0.33 | 0.249 / 0.171 / 0.140 [0.091] | 0.259 / 0.186 / 0.164 [0.061] | 0.244 / 0.184 / 0.174 [0.059] | 0.262 / 0.182 / 0.162 [0.089] |
+| 0.05 | 1.104 / 0.633 / 0.394 | 1.126 / 0.638 / 0.384 | 1.139 / 0.641 / 0.380 | 1.161 / 0.660 / 0.388 |
+| 0.1 | 1.039 / 0.592 / 0.416 | 1.041 / 0.585 / 0.386 | 1.104 / 0.603 / 0.388 | 1.048 / 0.587 / 0.412 |
+| 0.2 | 1.046 / 0.617 / 0.464 | 1.005 / 0.597 / 0.392 | 0.997 / 0.564 / 0.388 | 1.075 / 0.650 / 0.457 |
+| 0.33 | 0.996 / 0.693 / 0.743 | 0.837 / 0.570 / 0.514 | 0.743 / 0.545 / 0.494 | 0.984 / 0.667 / 0.719 |
 
-W2 at 1 step does not see the spiral: every arm, clean included, gives a blob at 1 step
-(0.21–0.26), so its differences are not evidence. The samples (figures.py, `sigma-*-samples`)
-show the effect of σ at 8 steps: at σ ≤ 0.1 every arm draws both arms of the spiral and W2@8
-is within 0.01 of clean; at σ = 0.2 the arms blur (W2@8 0.124–0.132); at σ = 0.33 no corrupted
-arm draws the spiral. Ambient iMF keeps samples on the plane (off-plane RMS 0.047 against 0.056
-naive at σ = 0.2, 0.06 against 0.09 at 0.33) but at σ = 0.33 its in-plane W2@8 is worse than
-naive (0.164, 0.174 against 0.140, 0.162). Single seed: no result either way.
-Why ambient can lose here (measured in the agent session, 2026-11-20): the noise is in all 64
-coordinates, so a noisy point is mostly off-plane (norm 2.6 at σ = 0.33) and only 2 of its 64
-noise coordinates touch the scored plane. The training set's own in-plane W2 to clean data is
-0.073 at σ = 0.05 and 0.125 at σ = 0.33, so naive's bias costs little on this metric, while
-ambient pays for removing it with a noisier target (noisy points' E|target|² 102 against 66
-for clean at σ = 0.33, 99th percentile 249) and drops 10% of noisy samples below t_n + 0.05.
+From 4 steps on, ambient iMF is below naive iMF in every cell, for both noise types, and the gap
+grows with σ; ambient stays within 0.02 of clean iMF up to σ = 0.2. The gain is off the plane:
+at σ = 0.33 naive iMF puts 5% of its 8-step samples more than 2 from the plane (the noisy
+training points sit 2.6 off it), ambient 1%. In the plane ambient is equal or slightly worse
+(8 steps, σ = 0.33: 0.164 against 0.140), plausibly the cost of its noisier target (noisy
+points' E|target|² 102 against 66 for clean at σ = 0.33). One step is far from clean for every
+arm, clean included (W2 ≈ 1.0–1.15, almost all off the plane). Seed 42 only: signals, not results.
 
 **Five arms, 33% clean, σ² ~ U[0, 1]**, D = 64, 100k steps, seed 42 (60098738; re-scored 60108782):
 
@@ -136,7 +129,7 @@ differs across GPU nodes by up to 0.012 in W2 (not bitwise reproducible across n
 
 ## Next step
 
-Ask the human whether to spend seeds 43–44 on σ ∈ {0.2, 0.33}, the only levels where corruption hurts naive iMF.
+Ask the human whether to run seeds 43–44 at σ ∈ {0.2, 0.33}, where the 64-D gap is large enough (0.07, 0.23 at 8 steps) to test against seed variance.
 
 ## Blocked on
 

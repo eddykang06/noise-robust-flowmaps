@@ -223,15 +223,15 @@ def fig_compare_at(out, sets, arms, sigma, name, hist_step=8):
     ax.legend(loc="upper right", fontsize=9)
 
     ax = mid.subplots()
-    bins = [i * 0.05 for i in range(31)]
+    bins = [i * 0.1 for i in range(47)]
     ax.hist(samples[ARMS[0]]["off"][str(hist_step)], bins=bins, histtype="step", color=MUTED, linewidth=1.5,
             linestyle="--", label="iMF, clean data")
     for label, short in arms.items():
         ax.hist(samples[label]["off"][str(hist_step)], bins=bins, histtype="step", linewidth=1.8,
                 color=HUES[ARMS.index(label)], label=short)
+    ax.set_yscale("log")
     ax.set_xlabel(f"distance from the plane at {hist_step} steps")
-    ax.set_ylabel("samples")
-    ax.set_yticks([])
+    ax.set_ylabel("samples (log scale)")
     ax.legend(loc="upper right", fontsize=9)
 
     axes = right.subplots(len(arms), len(STEPS), squeeze=False)
@@ -241,7 +241,7 @@ def fig_compare_at(out, sets, arms, sigma, name, hist_step=8):
             scatter(a, samples[label][str(k)][:2048], HUES[ARMS.index(label)], size=0.8)
             a.text(0.04, 0.04, f"{evals[label][f'{FULL}@{k}']:.3f}", transform=a.transAxes, fontsize=7.5, color=INK)
             if i == 0:
-                a.set_title(title(k), fontsize=9, loc="center", fontweight="normal", color=INK)
+                a.set_title(f"{k} step{'s' if k > 1 else ''}", fontsize=9, loc="center", fontweight="normal", color=INK)
             if j == 0:
                 a.set_ylabel(short, fontsize=9, color=INK)
     fig.suptitle(f"σ = {sigma}", x=0.01, ha="left", fontsize=12, fontweight="normal")
