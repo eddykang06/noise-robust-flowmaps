@@ -30,6 +30,12 @@ forward passes.
 
 ## Current state
 
+**Redirection (human, 2026-11-19): the corrupted data were too noisy; keep 75% clean (was 33%,
+the brief's value) and rerun the five arms at D = 64**, 100k steps, seed 42, same noise
+(σ² ~ U[0, 1], Gaussian or box-uniform, on all 64 coordinates). `arms.sh` now sets
+clean_frac 0.75; arm 1 is unchanged and resumes as finished. Job JOBID, `sweep.sbatch` with
+DIM=64, same header as 60098738 (`--mem=6G`: that job peaked at 4.1 GB).
+
 **Redirection (human, 2026-11-19): every figure, past, current and future, is a clean
 matplotlib figure.** `figures.py` draws each sweep (steps, training curves, samples) from the
 runs file and the re-scoring logs; it runs directly in the agent session, which is on a
@@ -473,7 +479,7 @@ numbers (MeanFlow, checkerboard) are superseded by the iMF pipeline and are not 
 
 ## Next step
 
-Ask the human how to make the corrupted arms learn the spiral at all (none does at D = 64), together with the open question of making clean exact iMF reach the floor (Blocked on); seeds 43–44 only after that.
+When the 75%-clean sweep finishes, re-score its arms at 1–8 steps and give it its own page.
 
 ## Blocked on
 

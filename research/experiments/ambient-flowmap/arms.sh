@@ -1,8 +1,9 @@
 # The first experiment's five arms (brief, eddy 90d5ebd) as scripts.train arguments, with
-# the spiral observed in $DIM dimensions (src/embed.py). Source it, then `arm_args <1-5>` sets ARGS.
+# the spiral observed in $DIM dimensions (src/embed.py).
+# 75% clean (human, 2026-11-19; the brief and job 60098738 used 33%). Source it, then `arm_args <1-5>` sets ARGS.
 D=research/experiments/ambient-flowmap
-GAUSSIAN="corruption={name: gaussian_uniform_var, var_max: 1.0, clean_frac: 0.33}"
-UNIFORM="corruption={name: box_uniform_var, var_max: 1.0, clean_frac: 0.33}"
+GAUSSIAN="corruption={name: gaussian_uniform_var, var_max: 1.0, clean_frac: 0.75}"
+UNIFORM="corruption={name: box_uniform_var, var_max: 1.0, clean_frac: 0.75}"
 
 arm_args() {
   case $1 in
