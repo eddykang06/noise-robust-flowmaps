@@ -174,9 +174,9 @@ Five arms (brief), seed 42, 75% clean, one $\sigma$ per job (`sweep.sbatch`, `DI
   peak 0.76 GB; `more-steps.sbatch`, keys `<g|u><σ·100><n|a>`), submitted with
   `--mem=1200M --mail-type=BEGIN,END` over the header
   `--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=2 --time=00:30:00`.
-- **Running: fresh-seed resample** of the $\sigma = 1.0$ runs (all four corrupted arms and clean
-  iMF), job 60226916 (`resample.sbatch`, sampling seeds 42, 1, 2, 3, 4 at $k = 1, 2, 8$; seed 42
-  should reproduce the re-score exactly), submitted with `--mail-type=BEGIN,END` over the header
+- **Fresh-seed resample** of the $\sigma = 1.0$ runs (all four corrupted arms and clean iMF), job
+  60226916 (22 min 43 s, peak 0.84 GB; `resample.sbatch`, sampling seeds 42, 1, 2, 3, 4 at
+  $k = 1, 2, 8$), submitted with `--mail-type=BEGIN,END` over the header
   `--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=2 --mem=1200M --time=00:30:00`.
 - **Results page** for both sweeps (human, 2026-11-20): artifact "Ambient iMF Noise Sweep",
   figures from `figures.py` (all eight $\sigma$, both noise types, 64-D and in-plane $W_2$).
@@ -262,9 +262,13 @@ the plane (0.415 against 0.326). From $\sigma = 0.5$ on no arm recovers the spir
 a blob at every step count), so the 64-D differences there measure distance from the plane, not
 shape. At high $\sigma$ ambient iMF gets worse with more steps ($\sigma = 1.0$, Gaussian: 1.332 at
 2 steps, 2.030 at 8). Ambient Gaussian at $\sigma = 1.0$, 1 step, is anomalous: 5.507 at 100k after
-0.94–1.29 at every evaluation from 30k to 90k, mostly off the plane (off-plane RMS 0.155 at 90k,
-0.693 at 100k), with a normal 2-step value; the re-score uses the same sampling seeds as training, so
-its matching value is not independent confirmation. Unexplained. Seed 42 only: signals, not results.
+0.94–1.29 at every evaluation from 30k to 90k, with a normal 2-step value. It is a property of the
+final checkpoint, not of one sampling draw: with five sampling seeds (60226916) its 1-step $W_2^{64\text{D}}$
+is 5.47–5.54 and 96% of its 1-step samples lie more than 2 from the plane (naive iMF: 22–26%;
+clean iMF: 2%). Only the final checkpoint was saved, so when between 90k and 100k the one-step map
+broke is unknown. Across the same five seeds the other $\sigma = 1.0$ runs vary by up to 0.15 at
+2 and 8 steps, which bounds how far single-draw differences at this $\sigma$ can be read. Seed 42
+training only: signals, not results.
 
 **Five arms, 33% clean, $\sigma^2 \sim \mathcal{U}[0,1]$**, $D = 64$, 100k steps, seed 42
 (60098738; re-scored 60108782). In-plane $W_2$ and per-coordinate off-plane RMS (older metric):
@@ -284,7 +288,7 @@ GPU nodes by up to 0.012 in $W_2$ (not bitwise reproducible across nodes).
 
 ## Next step
 
-When resample 60226916 finishes, report whether the ambient Gaussian $\sigma = 1.0$ one-step value of 5.507 holds across fresh sampling seeds or is specific to seed 42's draw.
+Retrain ambient iMF, Gaussian, $\sigma = 1.0$ with a checkpoint every 10k steps to locate when its one-step map breaks, if `scripts/train.py` can save intermediate checkpoints without a code change; otherwise record that under Blocked on.
 
 ## Blocked on
 
