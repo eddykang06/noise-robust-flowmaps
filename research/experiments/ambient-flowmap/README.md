@@ -166,10 +166,15 @@ Five arms (brief), seed 42, 75% clean, one $\sigma$ per job (`sweep.sbatch`, `DI
 - **Fixed-σ sweep**, $\sigma \in \{0.05, 0.1, 0.2, 0.33\}$: jobs 60187230, 60187234, 60187287,
   60187288 (1 h 35 min – 1 h 53 min, peak 4.1–4.4 GB); re-scored in 64-D by 60204483
   (`more-steps.sbatch`).
-- **Running: strong-noise sweep** (human, 2026-11-20), $\sigma \in \{0.25, 0.5, 0.75, 1.0\}$: jobs
-  60207440, 60207441, 60207442, 60207443. $\sigma = 1.0$ is the top: there ambient keeps 47% of
-  noisy draws and their target's $\mathbb{E}\lVert\hat v\rVert^2$ is $4.4\times$ a clean point's
-  (at $\sigma = 1.5$: 29%, $7\times$).
+- **Strong-noise sweep** (human, 2026-11-20), $\sigma \in \{0.25, 0.5, 0.75, 1.0\}$: jobs
+  60207440, 60207441, 60207442, 60207443, all completed (1 h 43 min – 1 h 56 min, peak 4.2 GB).
+  $\sigma = 1.0$ is the top: there ambient keeps 47% of noisy draws and their target's
+  $\mathbb{E}\lVert\hat v\rVert^2$ is $4.4\times$ a clean point's (at $\sigma = 1.5$: 29%, $7\times$).
+- **Running: re-score of the strong-noise sweep** at $k = 1, 2, 3, 4, 8$ in 64-D, job 60224909
+  (`more-steps.sbatch`, keys `<g|u><σ·100><n|a>`), submitted with
+  `--mem=1200M --mail-type=BEGIN,END` over the header
+  `--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=2 --time=00:30:00`
+  (last comparable re-score, 60204483, peaked at 0.77 GB).
 - **Tests** of the 64-D metric: GPU suite 60207586 (65/67; the new split test had a bug in its
   generator use, fixed and passing in CPU job 60211648, 59/59; `test_learns_the_checkerboard_in_one_step`
   has failed since 2026-11-10, 59185847, unrelated to this direction's changes).
@@ -234,6 +239,24 @@ worse ($k = 8$, $\sigma = 0.33$: 0.164 against 0.140), plausibly the cost of its
 One step is far from clean for every arm, clean included ($W_2^{64\text{D}} \approx 1.0$–$1.15$,
 almost all off the plane). Seed 42 only: signals, not results.
 
+**Strong-noise sweep, 75% clean**, $D = 64$, 100k steps, seed 42 (60207440–43; training-time
+evaluation, $k = 8$ pending re-score 60224909). $W_2^{64\text{D}}$ at $k = 1\,/\,2$ steps; clean iMF:
+1.148 / 0.623.
+
+| $\sigma$ | 2 naive, Gaussian | 3 ambient, Gaussian | 4 ambient, uniform | 5 naive, uniform |
+|---|---|---|---|---|
+| 0.25 | 1.036 / 0.642 | 1.028 / 0.613 | 0.970 / 0.555 | 1.064 / 0.670 |
+| 0.5 | 1.055 / 1.144 | 0.981 / 0.854 | 0.918 / 0.833 | 1.136 / 1.152 |
+| 0.75 | 1.638 / 2.198 | 1.122 / 1.123 | 1.065 / 1.130 | 1.714 / 2.108 |
+| 1.0 | 2.551 / 3.179 | 5.507 / 1.332 | 1.349 / 1.493 | 2.613 / 3.161 |
+
+From $\sigma = 0.5$ on, naive iMF degrades sharply at both step counts (at $\sigma = 1.0$, 2 steps:
+3.2 against clean 0.62), while ambient iMF degrades slowly (1.3–1.5). The one exception is ambient
+Gaussian at $\sigma = 1.0$, 1 step: 5.507 at 100k, after 0.94–1.29 at every evaluation from 30k to
+90k; the jump is mostly off the plane (off-plane RMS 0.155 at 90k, 0.693 at 100k), and its 2-step
+value did not jump. A late one-step instability, not yet explained; the re-score will show whether
+it persists under fresh sampling. Seed 42 only: signals, not results.
+
 **Five arms, 33% clean, $\sigma^2 \sim \mathcal{U}[0,1]$**, $D = 64$, 100k steps, seed 42
 (60098738; re-scored 60108782). In-plane $W_2$ and per-coordinate off-plane RMS (older metric):
 
@@ -252,7 +275,7 @@ GPU nodes by up to 0.012 in $W_2$ (not bitwise reproducible across nodes).
 
 ## Next step
 
-When the strong-noise jobs finish, re-score them at 1–8 steps in 64-D and add them to the sweep page.
+When re-score 60224909 finishes, add the $k = 4, 8$ columns for the strong-noise sweep and check whether the ambient Gaussian $\sigma = 1.0$ one-step jump reproduces.
 
 ## Blocked on
 
