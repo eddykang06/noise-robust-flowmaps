@@ -38,8 +38,10 @@ t > σ/(1+σ) + 0.05.
 ≈ 0.67), observed in D = 64 dimensions through a fixed rotation (`src/embed.py`), because exact
 iMF never sees t and cannot read it off a 2-D point. Toy MLP: hidden 256, 4 shared blocks, 2 per
 head. 100k steps, batch 1024, Adam lr 1e-4 (β₂ 0.95, 100 warmup steps), EMA 0.9999, fp32,
-seed 42. Metric: exact W2 in the spiral's plane on 4096 samples (floor 0.122, two independent
-clean samples), and off-plane RMS (0 for clean data).
+seed 42. Metric (human, 2026-11-20): exact W2 in all 64 dimensions on 4096 samples
+(`wasserstein2_full`). Since clean data lie on the plane, W2(64-D)² = W2(plane)² + mean squared
+distance from the plane, and both parts are reported. "Off-plane RMS" in older tables is per
+coordinate: distance from the plane is √62 times it.
 
 **Fixed-σ sweep** (human, 2026-11-19), 75% clean, one noise level per job,
 σ ∈ {0.05, 0.1, 0.2, 0.33}, the five arms of the brief:
@@ -72,6 +74,8 @@ clean samples), and off-plane RMS (0 for clean data).
 - 2026-11-18: 100k steps; seed 42 only, so differences are single-seed signals, not results.
 - 2026-11-18: observe the spiral in D dimensions (Pixel MeanFlow toy, arXiv 2601.22158 Sec. 5).
 - 2026-11-11: exact iMF, so the network does not see t.
+- 2026-11-20: W2 in all 64 dimensions is the metric for everything from now on; in-plane W2
+  misses the off-plane error that full-dimensional noise causes.
 - 2026-11-10: W2 as the only metric; plain squared error; spiral keeps its 0.1 radial jitter;
   `research/baseline.md` set aside; job emails at start and end; `--mem` ≈ 1.5× measured peak.
 

@@ -4,9 +4,11 @@ logs (more-steps.sbatch: eval.txt and plane-samples.json).
     python research/experiments/ambient-flowmap/figures.py <out_dir>
 
 Each set gets two figures: W2 against sampling steps, and a grid of samples. Each entry of SETS
-is one sweep: its runs (label -> (run name, key in plane-samples.json, the
-<key> of more-steps' RUNS pairs)), the re-scoring jobs holding them, and how its series are coloured (ordinal: a light-to-dark blue ramp for D; categorical:
-fixed hue order for arms). A set is drawn only once all its inputs exist.
+is one sweep: its runs (label -> (run name, key in plane-samples.json, the <key> of
+more-steps' RUNS pairs)), the re-scoring jobs holding them, the metric key it reports, and
+how its series are coloured (ordinal: a blue ramp for D; categorical: fixed hue order for
+arms). A set is drawn only once all its inputs exist. Since 2026-11-20 (human) the metric is
+W2 in all D dimensions (`wasserstein2_full`); the two older sets predate it and stay in-plane.
 """
 
 import json
@@ -20,9 +22,12 @@ import matplotlib.pyplot as plt
 
 LOGS = Path("/n/scratch/users/e/edk005/nrfm/ambient-flowmap/logs")
 STEPS = [1, 2, 3, 4, 8]
-W2_LABEL = "W2 to the true spiral (lower is better)"
-W2_NOTE = ("W2: Wasserstein-2 distance between 4096 generated and 4096 true samples, "
-           "measured in the spiral's 2-D plane.")
+FULL = "wasserstein2_full"
+W2_LABEL = {"wasserstein2": "W2 in the plane (lower is better)", FULL: "W2 in 64-D (lower is better)"}
+W2_NOTE = {"wasserstein2": "W2: Wasserstein-2 distance between 4096 generated and 4096 true samples, "
+                           "measured in the spiral's 2-D plane.",
+           FULL: "W2: Wasserstein-2 distance between 4096 generated and 4096 true samples in all 64 "
+                 "dimensions. Samples are drawn projected onto the spiral's plane."}
 INK, MUTED, RULE = "#26282c", "#6b6f76", "#e3e4e6"
 BLUES = ["#6da7ec", "#3987e5", "#256abf", "#184f95", "#0d366b"]
 HUES = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#6250d6"]
@@ -32,16 +37,17 @@ SETS = {
         "title": "Clean exact iMF, spiral observed in D dimensions, 100k steps",
         "runs": {"D = 2": ("imf-s42-7e4d5767", "2"), "D = 8": ("imf-s42-81dff414", "8"), "D = 16": ("imf-s42-4ec28c3d", "16"),
                  "D = 32": ("imf-s42-95e1a81a", "32"), "D = 64": ("imf-s42-f5958283", "64")},
-        "jobs": ["60033355", "60038059"], "colors": BLUES},
+        "jobs": ["60033355", "60038059"], "metric": "wasserstein2", "colors": BLUES},
     "arms-d64": {
         "title": "Five arms at D = 64, 100k steps",
         "runs": {"1 clean": ("imf-s42-f5958283", "arm1"), "2 naive, Gaussian": ("imf-s42-cda379ef", "arm2"),
                  "3 ambient, Gaussian": ("ambient_imf-s42-f3ed2000", "arm3"), "4 ambient, uniform": ("ambient_imf-s42-c8f8ec04", "arm4"),
                  "5 naive, uniform": ("imf-s42-2500a6d4", "arm5")},
-        "jobs": ["60108782"], "colors": HUES},
+        "jobs": ["60108782"], "metric": "wasserstein2", "colors": HUES},
 }
-# Fixed-sigma sweep, 75% clean (60187230/34/87/88, re-scored 60194400), one set per sigma;
-# arm 1 is the clean run re-scored in 60108782. Keys are <G|U><sigma*100><n|a>.
+# Fixed-sigma sweep, 75% clean (60187230/34/87/88), one set per sigma, all five arms
+# re-scored in 64-D by 60204483 (arm 1 is the clean run 60038059). Keys are <g|u><sigma*100><n|a>.
+RESCORE = "60204483"
 SWEEP = {"0.05": ["imf-s42-d2f56231", "ambient_imf-s42-7da581e8", "ambient_imf-s42-5d62af51", "imf-s42-f1bcb92c"],
          "0.1": ["imf-s42-44ec811d", "ambient_imf-s42-d9acc2f3", "ambient_imf-s42-72c3ce86", "imf-s42-3542192e"],
          "0.2": ["imf-s42-a42acddd", "ambient_imf-s42-a41185d9", "ambient_imf-s42-93ed43a6", "imf-s42-3d397500"],
@@ -53,7 +59,7 @@ for sigma, runs in SWEEP.items():
     SETS[f"sigma-{sigma}"] = {
         "title": f"Five arms, 75% clean, sigma = {sigma}",
         "runs": dict(zip(ARMS, [("imf-s42-f5958283", "arm1"), *zip(runs, keys)])),
-        "jobs": ["60108782", "60194400"], "colors": HUES}
+        "jobs": [RESCORE], "metric": FULL, "colors": HUES}
 
 plt.rcParams.update({
     "font.size": 10, "axes.titlesize": 11, "axes.titleweight": "bold", "axes.titlelocation": "left",
@@ -82,16 +88,16 @@ def load(spec):
 def fig_steps(name, spec, evals, out):
     fig, ax = plt.subplots(figsize=(6.4, 4))
     for (label, ev), color in zip(evals.items(), spec["colors"]):
-        ax.plot(STEPS, [ev[f"wasserstein2@{s}"] for s in STEPS], color=color, marker="o", label=label)
+        ax.plot(STEPS, [ev[f"{spec['metric']}@{s}"] for s in STEPS], color=color, marker="o", label=label)
     ax.set_xscale("log", base=2)
     ax.set_xticks(STEPS, [str(s) for s in STEPS])
     ax.minorticks_off()
     ax.set_ylim(0, None)
     ax.set_xlabel("sampling steps used to generate")
-    ax.set_ylabel(W2_LABEL)
+    ax.set_ylabel(W2_LABEL[spec["metric"]])
     ax.set_title("Sample quality vs. number of sampling steps (final checkpoint)")
     ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1), fontsize=9)
-    fig.text(0.01, -0.03, W2_NOTE, fontsize=8, color=MUTED)
+    fig.text(0.01, -0.03, W2_NOTE[spec["metric"]], fontsize=8, color=MUTED)
     fig.savefig(out / f"{name}-steps.png")
     plt.close(fig)
 
@@ -112,7 +118,7 @@ def fig_samples(name, spec, evals, samples, out, lim=2.3):
             for side in ax.spines.values():
                 side.set_visible(True)
             if k != "true":
-                ax.text(0.04, 0.04, f"W2 = {evals[label][f'wasserstein2@{k}']:.3f}", transform=ax.transAxes,
+                ax.text(0.04, 0.04, f"W2 = {evals[label][spec['metric'] + '@' + k]:.3f}", transform=ax.transAxes,
                         fontsize=8, color=INK)
             if i == 0:
                 ax.set_title("true spiral" if k == "true" else f"{k} sampling step{'s' if k != '1' else ''}",
@@ -122,116 +128,122 @@ def fig_samples(name, spec, evals, samples, out, lim=2.3):
     fig.suptitle("Generated samples, projected onto the spiral's plane", x=0.01, ha="left",
                  fontsize=11, fontweight="bold")
     fig.tight_layout()
-    fig.text(0.01, -0.01, W2_NOTE, fontsize=8, color=MUTED)
+    fig.text(0.01, -0.01, W2_NOTE[spec["metric"]], fontsize=8, color=MUTED)
     fig.savefig(out / f"{name}-samples.png")
     plt.close(fig)
 
 
-def fig_sigma(out):
-    """W2 at 1 and 2 steps against sigma, one line per arm, across the fixed-sigma sweep."""
-    sets = [SETS[f"sigma-{sigma}"] for sigma in SWEEP]
-    evals = [load(spec)[0] for spec in sets]
-    sigmas = [float(s) for s in SWEEP]
-    fig, axes = plt.subplots(1, 2, figsize=(9, 3.6), sharey=True)
-    for ax, k in zip(axes, [1, 2]):
-        for label, color in zip(ARMS, HUES):
-            ax.plot(sigmas, [ev[label][f"wasserstein2@{k}"] for ev in evals], color=color, marker="o", label=label)
-        ax.set_xticks(sigmas, list(SWEEP))
-        ax.set_xlabel("noise level sigma of the corrupted 25%")
-        ax.set_title(f"{k} sampling step{'s' if k > 1 else ''}")
-    axes[0].set_ylim(0, None)
-    axes[0].set_ylabel(W2_LABEL)
-    axes[1].legend(loc="upper left", bbox_to_anchor=(1.01, 1), fontsize=9)
-    fig.text(0.01, -0.04, W2_NOTE + " Seed 42 only.", fontsize=8, color=MUTED)
-    fig.savefig(out / "sweep-sigma.png")
-    plt.close(fig)
+def sweep():
+    """Metrics and samples of every arm at every sigma of the fixed-sigma sweep."""
+    return {sigma: load(SETS[f"sigma-{sigma}"]) for sigma in SWEEP}
 
 
-def fig_compare(out, name, arms, steps=(1, 2, 8), sample_step=8, lim=2.3):
-    """Two arms of the fixed-sigma sweep head to head: W2 against sigma at each step count in
-    `steps` (clean iMF dashed), and samples at `sample_step` steps, one row per arm, one column
-    per sigma."""
-    sets = {sigma: load(SETS[f"sigma-{sigma}"]) for sigma in SWEEP}
+def title(k):
+    return f"{k} sampling step{'s' if k > 1 else ''}"
+
+
+def fig_sigma(out, sets, arms, name, steps=(1, 2, 8)):
+    """W2 in 64-D against sigma at each step count in `steps`, one line per arm, clean iMF dashed."""
     sigmas = [float(s) for s in SWEEP]
-    colors = {label: HUES[ARMS.index(label)] for label in arms}
     clean = sets[next(iter(SWEEP))][0][ARMS[0]]
-
     fig, axes = plt.subplots(1, len(steps), figsize=(3.3 * len(steps), 3.2), sharey=True)
     for ax, k in zip(axes, steps):
-        ax.axhline(clean[f"wasserstein2@{k}"], color=MUTED, linestyle="--", linewidth=1.2, label="iMF, clean data")
-        for label in arms:
-            ax.plot(sigmas, [sets[s][0][label][f"wasserstein2@{k}"] for s in SWEEP], color=colors[label],
-                    marker="o", label=arms[label])
+        ax.axhline(clean[f"{FULL}@{k}"], color=MUTED, linestyle="--", linewidth=1.2, label="iMF, clean data")
+        for label, short in arms.items():
+            ax.plot(sigmas, [sets[s][0][label][f"{FULL}@{k}"] for s in SWEEP], color=HUES[ARMS.index(label)],
+                    marker="o", label=short)
         ax.set_xticks(sigmas, list(SWEEP))
         ax.set_xlabel("noise level σ")
-        ax.set_title(f"{k} sampling step{'s' if k > 1 else ''}", fontweight="normal")
+        ax.set_title(title(k), fontweight="normal")
     axes[0].set_ylim(0, None)
-    axes[0].set_ylabel("W2 to clean data (lower is better)")
+    axes[0].set_ylabel(W2_LABEL[FULL])
     axes[-1].legend(loc="upper left", bbox_to_anchor=(1.02, 1), fontsize=9)
     fig.savefig(out / f"{name}-w2.png")
     plt.close(fig)
 
-    fig, axes = plt.subplots(len(arms), len(SWEEP), figsize=(1.9 * len(SWEEP), 1.9 * len(arms)), squeeze=False)
-    for i, label in enumerate(arms):
-        for j, sigma in enumerate(SWEEP):
-            evals, samples = sets[sigma]
-            x = samples[label][str(sample_step)][:2048]
-            ax = axes[i, j]
-            ax.scatter([p[0] for p in x], [p[1] for p in x], s=1.2, linewidths=0, alpha=0.75,
-                       color=colors[label], rasterized=True)
-            ax.set(xlim=(-lim, lim), ylim=(-lim, lim), xticks=[], yticks=[], aspect="equal")
-            ax.grid(False)
-            for side in ax.spines.values():
-                side.set_visible(True)
-            ax.text(0.04, 0.04, f"W2 = {evals[label][f'wasserstein2@{sample_step}']:.3f}",
-                    transform=ax.transAxes, fontsize=8, color=INK)
-            if i == 0:
-                ax.set_title(f"σ = {sigma}", fontsize=10, loc="center", fontweight="normal", color=INK)
-            if j == 0:
-                ax.set_ylabel(arms[label], fontsize=10, color=INK)
-    fig.tight_layout()
-    fig.savefig(out / f"{name}-samples-{sample_step}step.png")
+
+def fig_breakdown(out, sets, arms, name, steps=(1, 8)):
+    """W2² in 64-D split into its in-plane part (W2² in the plane) and its off-plane part (mean
+    squared distance from the plane), exact because the clean data lie on the plane; one bar
+    per arm at each sigma, clean iMF first."""
+    sigmas = list(SWEEP)
+    width = 0.8 / len(arms)
+    fig, axes = plt.subplots(1, len(steps), figsize=(5 * len(steps), 3.4), sharey=False)
+    for ax, k in zip(axes, steps):
+        clean = sets[sigmas[0]][0][ARMS[0]]
+        bars = [("clean", -1, clean, MUTED)]
+        for i, label in enumerate(arms):
+            for j, sigma in enumerate(sigmas):
+                bars.append((label, j + (i - (len(arms) - 1) / 2) * width, sets[sigma][0][label],
+                             HUES[ARMS.index(label)]))
+        for label, x, ev, color in bars:
+            plane, full = ev[f"wasserstein2@{k}"] ** 2, ev[f"{FULL}@{k}"] ** 2
+            ax.bar(x, plane, width * 0.95, color=color)
+            ax.bar(x, full - plane, width * 0.95, bottom=plane, color=color, alpha=0.35)
+        ax.set_xticks([-1, *range(len(sigmas))], ["clean", *[f"σ = {s}" for s in sigmas]])
+        ax.set_title(title(k), fontweight="normal")
+        ax.grid(axis="x", visible=False)
+    axes[0].set_ylabel("W2² in 64-D")
+    handles = [plt.Rectangle((0, 0), 1, 1, color=HUES[ARMS.index(label)]) for label in arms]
+    handles += [plt.Rectangle((0, 0), 1, 1, color=MUTED), plt.Rectangle((0, 0), 1, 1, color=MUTED, alpha=0.35)]
+    axes[-1].legend(handles, [*arms.values(), "solid: in the plane", "light: off the plane"],
+                    loc="upper left", bbox_to_anchor=(1.02, 1), fontsize=9)
+    fig.savefig(out / f"{name}-breakdown.png")
     plt.close(fig)
 
 
-def fig_compare_at(out, name, arms, sigma, lim=2.3):
-    """Two arms at one noise level: W2 against sampling steps (clean iMF dashed), and their
-    samples at every step count, one row per arm."""
-    evals, samples = load(SETS[f"sigma-{sigma}"])
-    colors = {label: HUES[ARMS.index(label)] for label in arms}
-    fig = plt.figure(figsize=(13, 3.6))
-    left, right = fig.subfigures(1, 2, width_ratios=[1, 2.3])
+def scatter(ax, x, color, lim=2.3, size=1.0):
+    ax.scatter([p[0] for p in x], [p[1] for p in x], s=size, linewidths=0, alpha=0.75, color=color,
+               rasterized=True)
+    ax.set(xlim=(-lim, lim), ylim=(-lim, lim), xticks=[], yticks=[], aspect="equal")
+    ax.grid(False)
+    for side in ax.spines.values():
+        side.set_visible(True)
+
+
+def fig_compare_at(out, sets, arms, sigma, name, hist_step=8):
+    """Arms at one noise level: W2 in 64-D against sampling steps (clean iMF dashed), each
+    arm's distance from the plane at `hist_step` steps, and its samples in the plane at every
+    step count, one row per arm."""
+    evals, samples = sets[sigma]
+    fig = plt.figure(figsize=(16, 3.6))
+    left, mid, right = fig.subfigures(1, 3, width_ratios=[1, 1, 2.3])
     ax = left.subplots()
-    ax.plot(STEPS, [evals[ARMS[0]][f"wasserstein2@{k}"] for k in STEPS], color=MUTED, linestyle="--",
+    ax.plot(STEPS, [evals[ARMS[0]][f"{FULL}@{k}"] for k in STEPS], color=MUTED, linestyle="--",
             linewidth=1.2, label="iMF, clean data")
-    for label in arms:
-        ax.plot(STEPS, [evals[label][f"wasserstein2@{k}"] for k in STEPS], color=colors[label], marker="o",
-                label=arms[label])
+    for label, short in arms.items():
+        ax.plot(STEPS, [evals[label][f"{FULL}@{k}"] for k in STEPS], color=HUES[ARMS.index(label)],
+                marker="o", label=short)
     ax.set_xscale("log", base=2)
     ax.set_xticks(STEPS, [str(k) for k in STEPS])
     ax.minorticks_off()
-    ax.set_ylim(0, 0.3)
+    ax.set_ylim(0, 1.3)
     ax.set_xlabel("sampling steps")
-    ax.set_ylabel("W2 to clean data (lower is better)")
-    ax.legend(loc="lower left", fontsize=9)
+    ax.set_ylabel(W2_LABEL[FULL])
+    ax.legend(loc="upper right", fontsize=9)
+
+    ax = mid.subplots()
+    bins = [i * 0.05 for i in range(31)]
+    ax.hist(samples[ARMS[0]]["off"][str(hist_step)], bins=bins, histtype="step", color=MUTED, linewidth=1.5,
+            linestyle="--", label="iMF, clean data")
+    for label, short in arms.items():
+        ax.hist(samples[label]["off"][str(hist_step)], bins=bins, histtype="step", linewidth=1.8,
+                color=HUES[ARMS.index(label)], label=short)
+    ax.set_xlabel(f"distance from the plane at {hist_step} steps")
+    ax.set_ylabel("samples")
+    ax.set_yticks([])
+    ax.legend(loc="upper right", fontsize=9)
+
     axes = right.subplots(len(arms), len(STEPS), squeeze=False)
-    for i, label in enumerate(arms):
+    for i, (label, short) in enumerate(arms.items()):
         for j, k in enumerate(STEPS):
-            x = samples[label][str(k)][:2048]
             a = axes[i, j]
-            a.scatter([p[0] for p in x], [p[1] for p in x], s=0.8, linewidths=0, alpha=0.75,
-                      color=colors[label], rasterized=True)
-            a.set(xlim=(-lim, lim), ylim=(-lim, lim), xticks=[], yticks=[], aspect="equal")
-            a.grid(False)
-            for side in a.spines.values():
-                side.set_visible(True)
-            a.text(0.04, 0.04, f"{evals[label][f'wasserstein2@{k}']:.3f}", transform=a.transAxes, fontsize=7.5,
-                   color=INK)
+            scatter(a, samples[label][str(k)][:2048], HUES[ARMS.index(label)], size=0.8)
+            a.text(0.04, 0.04, f"{evals[label][f'{FULL}@{k}']:.3f}", transform=a.transAxes, fontsize=7.5, color=INK)
             if i == 0:
-                a.set_title(f"{k} step{'s' if k > 1 else ''}", fontsize=9, loc="center", fontweight="normal",
-                            color=INK)
+                a.set_title(title(k), fontsize=9, loc="center", fontweight="normal", color=INK)
             if j == 0:
-                a.set_ylabel(arms[label], fontsize=9, color=INK)
+                a.set_ylabel(short, fontsize=9, color=INK)
     fig.suptitle(f"σ = {sigma}", x=0.01, ha="left", fontsize=12, fontweight="normal")
     fig.savefig(out / f"{name}-sigma-{sigma}.png")
     plt.close(fig)
@@ -240,7 +252,7 @@ def fig_compare_at(out, name, arms, sigma, lim=2.3):
 def main(out):
     out.mkdir(parents=True, exist_ok=True)
     for name, spec in SETS.items():
-        if not spec["runs"] or not all((LOGS / j / "eval.txt").exists() for j in spec["jobs"]):
+        if not all((LOGS / j / "eval.txt").exists() for j in spec["jobs"]):
             print(f"{name}: inputs missing, skipped")
             continue
         evals, samples = load(spec)
@@ -248,14 +260,15 @@ def main(out):
         fig_steps(name, spec, evals, out)
         fig_samples(name, spec, evals, samples, out)
         print(f"{name}: wrote {name}-steps.png, -samples.png")
-    if (LOGS / "60194400" / "eval.txt").exists():
-        fig_sigma(out)
+    if (LOGS / RESCORE / "eval.txt").exists():
+        sets = sweep()
+        fig_sigma(out, sets, {label: label for label in ARMS[1:]}, "sweep-sigma")
         gaussian = {"2 naive, Gaussian": "iMF", "3 ambient, Gaussian": "ambient iMF"}
-        for k in (1, 8):
-            fig_compare(out, "gaussian-imf-vs-ambient", gaussian, sample_step=k)
+        fig_sigma(out, sets, gaussian, "gaussian-imf-vs-ambient")
+        fig_breakdown(out, sets, gaussian, "gaussian-imf-vs-ambient")
         for sigma in SWEEP:
-            fig_compare_at(out, "gaussian-imf-vs-ambient", gaussian, sigma)
-        print("wrote sweep-sigma.png, gaussian-imf-vs-ambient-*.png")
+            fig_compare_at(out, sets, gaussian, sigma, "gaussian-imf-vs-ambient")
+        print("wrote sweep-sigma-w2.png, gaussian-imf-vs-ambient-*.png")
 
 
 if __name__ == "__main__":
