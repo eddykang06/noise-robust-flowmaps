@@ -4,7 +4,7 @@
 # (D chosen by the clean sweep, dim-sweep.sbatch). Arm 1 is that sweep's run at D, which
 # resumes as already finished. 100k steps (configs). Sized from 60027106: four 100k runs in
 # parallel took 1 h 54 min and peaked at 4.06 GB.
-#   DESC=... research/bin/submit ambient-flowmap <this> --export=ALL,DIM=<D>
+#   DESC=... research/bin/submit ambient-flowmap <this> --export=ALL,DIM=<D>,SIGMA=<sigma>
 #SBATCH --partition=gpu,gpu_quad
 #SBATCH --qos=gpuquad_qos
 #SBATCH --gres=gpu:1
@@ -27,5 +27,5 @@ run_arm() {
 }
 
 nvidia-smi --query-gpu=name --format=csv,noheader
-echo "$(git rev-parse --short HEAD); D=$DIM; logs in $LOGS"
+echo "$(git rev-parse --short HEAD); D=$DIM; sigma=$SIGMA; logs in $LOGS"
 all_arms run_arm

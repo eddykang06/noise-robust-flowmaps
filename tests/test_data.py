@@ -4,7 +4,7 @@ import pytest
 import torch
 
 from src.config import load
-from src.corrupt import box_uniform_var, gaussian, gaussian_uniform_var
+from src.corrupt import box_uniform_var, gaussian, gaussian_uniform_var, uniform
 from src.data import Batch, sample_clean
 from src.embed import basis, frame
 from src.metrics import wasserstein2
@@ -47,14 +47,18 @@ def test_clean_only_keeps_exactly_the_clean_samples():
     assert torch.equal(clean.x, d.x[d.sigma == 0]) and (clean.sigma == 0).all()
 
 
-def test_gaussian_corruption(gen):
+@pytest.mark.parametrize("corrupt", [gaussian, uniform])
+def test_fixed_sigma_corruptions(gen, corrupt):
     clean = sample_clean("checkerboard", 200_000, gen(1))
-    obs = gaussian(clean, gen(2), sigma=0.3, clean_frac=0.1)
+    obs = corrupt(clean, gen(2), sigma=0.3, clean_frac=0.1)
     noisy = obs.sigma > 0
+    noise = (obs.x - clean.x)[noisy]
     assert abs(noisy.float().mean() - 0.9) < 0.005
-    assert abs((obs.x - clean.x)[noisy].std() - 0.3) < 0.003
+    assert abs(noise.std() - 0.3) < 0.003 and abs(noise.mean()) < 0.003
     assert torch.equal(obs.sigma.unique(), torch.tensor([0.0, 0.3]))
     assert torch.equal(obs.x[~noisy], clean.x[~noisy])
+    if corrupt is uniform:
+        assert noise.abs().max() <= 0.3 * 3 ** 0.5 + 1e-5
 
 
 @pytest.mark.parametrize("corrupt", [gaussian_uniform_var, box_uniform_var])
