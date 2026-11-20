@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Re-scores dimension-sweep checkpoints at 1, 2, 3, 4 and 8 sampling steps with
 # scripts.eval (same reference and seeds as training), and saves 4096 samples per step
-# count in the plane for the figure. No training. RUNS lists <run name>:<key> pairs, e.g.
+# count in the plane, with each sample's distance from the plane, for the figures. No
+# training. RUNS lists <run name>:<key> pairs, e.g.
 # --export=ALL,RUNS="imf-s42-61bb6b98:2 ambient_imf-s42-f3ed2000:arm3".
 #SBATCH --partition=gpu,gpu_quad
 #SBATCH --qos=gpuquad_qos
@@ -40,6 +41,7 @@ for run, key in runs.items():
     with torch.no_grad():
         gen = samples(net, cfg, ref)
     out[key] = {s: frame(x)[:, :2].cpu().round(decimals=3).tolist() for s, x in gen.items()}
+    out[key]["off"] = {s: frame(x)[:, 2:].norm(dim=1).cpu().round(decimals=3).tolist() for s, x in gen.items()}
     out[key]["true"] = frame(ref.x)[:, :2].cpu().round(decimals=3).tolist()
 json.dump(out, open(sys.argv[2], "w"))
 EOF

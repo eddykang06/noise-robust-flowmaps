@@ -87,4 +87,4 @@ def test_arms_run(tmp, name, extra):
     run(tmp, name, ["train.steps=300", "train.eval_every=300", *extra])
     last = metrics(tmp, name)[-1]
     assert all(math.isfinite(m) for m in last.values())
-    assert ("off_plane_rms@1" in last) == (name == "embedded")
+    assert ("off_plane_rms@1" in last) == ("wasserstein2_full@1" in last) == (name == "embedded")

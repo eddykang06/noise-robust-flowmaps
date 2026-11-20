@@ -61,14 +61,16 @@ def samples(net, cfg: Config, ref: Batch) -> dict:
 
 
 def score(cfg: Config, generated: dict, ref: Batch) -> dict:
-    """The metric in the plane and, above 2-D, the RMS off it, for every step count."""
+    """The metric in the plane and, above 2-D, in all D dimensions (`<name>_full`, the
+    headline metric since 2026-11-20) and the per-coordinate RMS off the plane, for every
+    step count."""
     name, plane = cfg.metric["name"], frame(ref.x)[:, :2]
     out = {}
     for steps, x in generated.items():
-        x = frame(x)
-        out[f"{name}@{steps}"] = METRICS[name](x[:, :2], plane)
+        out[f"{name}@{steps}"] = METRICS[name](frame(x)[:, :2], plane)
         if x.shape[1] > 2:
-            out[f"off_plane_rms@{steps}"] = x[:, 2:].square().mean().sqrt().item()
+            out[f"{name}_full@{steps}"] = METRICS[name](x, ref.x)
+            out[f"off_plane_rms@{steps}"] = frame(x)[:, 2:].square().mean().sqrt().item()
     return out
 
 
