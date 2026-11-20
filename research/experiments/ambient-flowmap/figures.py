@@ -262,13 +262,13 @@ PAIRS = {"Gaussian noise": ("2 naive, Gaussian", "3 ambient, Gaussian"),
 NAIVE, AMBIENT = HUES[1], HUES[2]
 
 
-def fig_summary_w2(out, sets, steps=(1, 2, 8)):
+def fig_summary_w2(out, sets, steps=(1, 2, 4, 8)):
     """W2 in 64-D against sigma for every sigma in `sets`, one row per noise type and one column
     per step count; iMF vs ambient iMF, clean iMF dashed. Large type for reading on a page."""
     sigmas = [float(s) for s in sets]
     clean = sets[next(iter(sets))][0][ARMS[0]]
     with plt.rc_context({"font.size": 13, "axes.titlesize": 14, "lines.linewidth": 2.4, "lines.markersize": 7}):
-        fig, axes = plt.subplots(2, len(steps), figsize=(12, 7.2), sharex=True, sharey=True)
+        fig, axes = plt.subplots(2, len(steps), figsize=(4 * len(steps), 7.2), sharex=True, sharey=True)
         for row, (noise, (naive, ambient)) in zip(axes, PAIRS.items()):
             for ax, k in zip(row, steps):
                 ax.axhline(clean[f"{FULL}@{k}"], color=MUTED, linestyle="--", linewidth=1.4)
@@ -325,13 +325,13 @@ COMPARISONS = {
 }
 
 
-def fig_compare(out, sets, name, steps=(1, 2, 8), step=8):
+def fig_compare(out, sets, name, steps=(1, 2, 4, 8), step=4):
     """One two-way comparison: W2 in 64-D against sigma at each step count (clean iMF dashed),
     and the two arms' samples in the plane at `step` steps, one column per sigma."""
     pair, sigmas = COMPARISONS[name], [float(s) for s in sets]
     clean = sets[next(iter(sets))][0][ARMS[0]]
     with plt.rc_context({"font.size": 13, "axes.titlesize": 14, "lines.linewidth": 2.4, "lines.markersize": 7}):
-        fig, axes = plt.subplots(1, len(steps), figsize=(12, 3.9), sharey=True)
+        fig, axes = plt.subplots(1, len(steps), figsize=(4 * len(steps), 3.9), sharey=True)
         for ax, k in zip(axes, steps):
             ax.axhline(clean[f"{FULL}@{k}"], color=MUTED, linestyle="--", linewidth=1.4, label="iMF on clean data only")
             for label, (arm, color) in pair.items():
@@ -360,7 +360,7 @@ def fig_compare(out, sets, name, steps=(1, 2, 8), step=8):
                 if j == 0:
                     ax.set_ylabel(label.replace(", ", "\n"), fontsize=12, color=INK)
         fig.tight_layout()
-        fig.savefig(out / f"compare-{name}-samples.png")
+        fig.savefig(out / f"compare-{name}-samples-{step}.png")
         plt.close(fig)
 
 
