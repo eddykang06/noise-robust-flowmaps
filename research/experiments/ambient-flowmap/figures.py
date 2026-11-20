@@ -150,13 +150,13 @@ def title(k):
 
 def fig_sigma(out, sets, arms, name, steps=(1, 2, 8), metric=FULL):
     """W2 (`metric`) against sigma at each step count in `steps`, one line per arm, clean iMF dashed."""
-    sigmas = [float(s) for s in SWEEP]
-    clean = sets[next(iter(SWEEP))][0][ARMS[0]]
+    sigmas = [float(s) for s in sets]
+    clean = sets[next(iter(sets))][0][ARMS[0]]
     fig, axes = plt.subplots(1, len(steps), figsize=(3.3 * len(steps), 3.2), sharey=True)
     for ax, k in zip(axes, steps):
         ax.axhline(clean[f"{metric}@{k}"], color=MUTED, linestyle="--", linewidth=1.2, label="iMF, clean data")
         for label, short in arms.items():
-            ax.plot(sigmas, [sets[s][0][label][f"{metric}@{k}"] for s in SWEEP], color=HUES[ARMS.index(label)],
+            ax.plot(sigmas, [sets[s][0][label][f"{metric}@{k}"] for s in sets], color=HUES[ARMS.index(label)],
                     marker="o", label=short)
         ax.set_xticks([0, 0.25, 0.5, 0.75, 1.0])
         ax.set_xlabel("noise level σ")
@@ -257,6 +257,66 @@ def fig_compare_at(out, sets, arms, sigma, name, hist_step=8):
     plt.close(fig)
 
 
+STRONG = ["0.25", "0.5", "0.75", "1.0"]  # the strong-noise sweep, 60207440-43
+PAIRS = {"Gaussian noise": ("2 naive, Gaussian", "3 ambient, Gaussian"),
+         "Uniform noise": ("5 naive, uniform", "4 ambient, uniform")}
+NAIVE, AMBIENT = HUES[1], HUES[2]
+
+
+def fig_strong_w2(out, sets, steps=(1, 2, 8)):
+    """Summary for the strong-noise sweep: W2 in 64-D against sigma, one row per noise type and
+    one column per step count; iMF vs ambient iMF, clean iMF dashed. Large type for reading on a page."""
+    sigmas = [float(s) for s in STRONG]
+    clean = sets[STRONG[0]][0][ARMS[0]]
+    with plt.rc_context({"font.size": 13, "axes.titlesize": 14, "lines.linewidth": 2.4, "lines.markersize": 7}):
+        fig, axes = plt.subplots(2, len(steps), figsize=(12, 7.2), sharex=True, sharey=True)
+        for row, (noise, (naive, ambient)) in zip(axes, PAIRS.items()):
+            for ax, k in zip(row, steps):
+                ax.axhline(clean[f"{FULL}@{k}"], color=MUTED, linestyle="--", linewidth=1.4)
+                ax.plot(sigmas, [sets[s][0][naive][f"{FULL}@{k}"] for s in STRONG], color=NAIVE, marker="o")
+                ax.plot(sigmas, [sets[s][0][ambient][f"{FULL}@{k}"] for s in STRONG], color=AMBIENT, marker="o")
+                ax.set_xticks(sigmas, STRONG)
+                ax.set_ylim(0, None)
+            row[0].set_ylabel(f"{noise}\nW2 in 64-D")
+        for ax, k in zip(axes[0], steps):
+            ax.set_title(title(k))
+        for ax in axes[1]:
+            ax.set_xlabel("noise level σ")
+        handles = [plt.Line2D([], [], color=NAIVE, marker="o"), plt.Line2D([], [], color=AMBIENT, marker="o"),
+                   plt.Line2D([], [], color=MUTED, linestyle="--")]
+        fig.legend(handles, ["iMF (noisy points used as clean)", "ambient iMF", "iMF on clean data only"],
+                   loc="lower center", ncol=3, bbox_to_anchor=(0.5, -0.04))
+        fig.tight_layout()
+        fig.savefig(out / "strong-w2.png")
+        plt.close(fig)
+
+
+def fig_strong_samples(out, sets, step=8):
+    """Samples in the plane at `step` steps for the strong-noise sweep: one row per sigma, the true
+    spiral then iMF and ambient iMF for each noise type, W2 in 64-D in the corner."""
+    cols = [("true spiral", None, MUTED)] + [
+        (f"{who}\n{noise.split()[0]}", label, color)
+        for noise, pair in PAIRS.items() for who, label, color in zip(("iMF", "ambient iMF"), pair, (NAIVE, AMBIENT))]
+    with plt.rc_context({"font.size": 13}):
+        fig, axes = plt.subplots(len(STRONG), len(cols), figsize=(2.3 * len(cols), 2.3 * len(STRONG)))
+        for i, sigma in enumerate(STRONG):
+            evals, samples = sets[sigma]
+            for j, (name, label, color) in enumerate(cols):
+                ax = axes[i, j]
+                x = samples[ARMS[0]]["true"] if label is None else samples[label][str(step)]
+                scatter(ax, x[:2048], color, lim=2.6, size=1.6)
+                if label is not None:
+                    ax.text(0.04, 0.04, f"{evals[label][f'{FULL}@{step}']:.2f}", transform=ax.transAxes,
+                            fontsize=12, color=INK)
+                if i == 0:
+                    ax.set_title(name, fontsize=13, loc="center", fontweight="normal")
+                if j == 0:
+                    ax.set_ylabel(f"σ = {sigma}", fontsize=13, color=INK)
+        fig.tight_layout()
+        fig.savefig(out / f"strong-samples-{step}.png")
+        plt.close(fig)
+
+
 def main(out):
     out.mkdir(parents=True, exist_ok=True)
     for name, spec in SETS.items():
@@ -281,7 +341,9 @@ def main(out):
         for sigma in SWEEP:
             fig_compare_at(out, sets, gaussian, sigma, "gaussian-imf-vs-ambient")
             fig_compare_at(out, sets, uniform, sigma, "uniform-imf-vs-ambient")
-        print("wrote sweep-sigma-w2.png, gaussian-/uniform-imf-vs-ambient-*.png")
+        fig_strong_w2(out, sets)
+        fig_strong_samples(out, sets)
+        print("wrote sweep-sigma-w2.png, gaussian-/uniform-imf-vs-ambient-*.png, strong-*.png")
 
 
 if __name__ == "__main__":
