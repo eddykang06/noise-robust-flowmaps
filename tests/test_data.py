@@ -92,8 +92,8 @@ def test_full_wasserstein2_splits_into_plane_and_off_plane(gen):
     """Against data on the plane, the off-plane cost of a pair does not depend on the
     matching, so W2 in D dimensions is sqrt(W2 in the plane^2 + mean squared distance off it)."""
     dim, n = 8, 256
-    ref = torch.cat([sample_clean("spiral", n, gen).x, torch.zeros(n, dim - 2)], 1)
-    x = torch.randn(n, dim, generator=gen)
+    ref = torch.cat([sample_clean("spiral", n, gen(0)).x, torch.zeros(n, dim - 2)], 1)
+    x = torch.randn(n, dim, generator=gen(1))
     full = wasserstein2(x @ basis(dim).T, ref @ basis(dim).T)
     split = (wasserstein2(x[:, :2], ref[:, :2]) ** 2 + x[:, 2:].square().sum(1).mean().item()) ** 0.5
     assert abs(full - split) < 1e-4
