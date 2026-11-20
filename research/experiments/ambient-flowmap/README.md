@@ -71,7 +71,7 @@ instantaneous velocity at $t$.
 **One training step**, on a batch of 1024 points $x$ (the naive arms use the noisy $y$ as if it
 were $x$):
 
-1. **Times.** Draw $a, b \sim \operatorname{logit-normal}(-0.4,\ 1)$ and set
+1. **Times.** Draw $a, b \sim \text{logit-normal}(-0.4,\ 1)$ and set
    $t = \max(a,b)$, $r = \min(a,b)$. For half of the batch set $r = t$.
 2. **Noise the data.**
    $$
@@ -145,7 +145,7 @@ clean points, exact by linear assignment (`wasserstein2_full`). Because clean da
 plane, it splits exactly:
 
 $$
-W_2^{64\text{D}}\,{}^2 = W_2^{\text{plane}}\,{}^2 + \mathbb{E}\big[\operatorname{dist}(x, \text{plane})^2\big]
+\big(W_2^{64\text{D}}\big)^2 = \big(W_2^{\text{plane}}\big)^2 + \mathbb{E}\big[\operatorname{dist}(\text{sample}, \text{plane})^2\big]
 $$
 
 and both parts are reported. "Off-plane RMS" in older tables is per coordinate; the distance
