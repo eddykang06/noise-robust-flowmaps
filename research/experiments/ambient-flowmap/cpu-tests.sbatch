@@ -12,7 +12,7 @@ export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 cd "$SLURM_SUBMIT_DIR"
 status=0
 git log -1 --oneline
-python -m pytest -v -rs tests/test_ambient_imf.py tests/test_imf.py || status=1
+python -m pytest -v -rs -m "not gpu" || status=1
 cd /n/scratch/users/e/edk005/nrfm/main-candidate
 git log -1 --oneline
 python -m pytest -v -rs -m "not gpu" || status=1
