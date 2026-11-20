@@ -178,13 +178,11 @@ Five arms (brief), seed 42, 75% clean, one $\sigma$ per job (`sweep.sbatch`, `DI
   60226916 (22 min 43 s, peak 0.84 GB; `resample.sbatch`, sampling seeds 42, 1, 2, 3, 4 at
   $k = 1, 2, 8$), submitted with `--mail-type=BEGIN,END` over the header
   `--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=2 --mem=1200M --time=00:30:00`.
-- **Running: localize the one-step break**: ambient iMF, Gaussian, $\sigma = 1.0$ retrained with
+- **Localize the one-step break**: ambient iMF, Gaussian, $\sigma = 1.0$ retrained with
   evaluation every 2k steps (otherwise the sweep's config; evaluation does not touch the training
-  RNG), job 60233034 (`localize.sbatch`, `DIM=64,SIGMA=1.0,ARM=3,EVAL_EVERY=2000`), submitted with
+  RNG), job 60233034 (2 h 00 min, peak 1.16 GB; `localize.sbatch`, `DIM=64,SIGMA=1.0,ARM=3,EVAL_EVERY=2000`), submitted with
   `--mail-type=BEGIN,END` over the header
   `--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=2 --mem=2G --time=02:30:00`.
-  The sweep run trained on a Tesla V100S; on another GPU type the trajectory need not match bitwise,
-  so a run without the break would not show the break was a fluke.
 - **Results page** for both sweeps (human, 2026-11-20): artifact "Ambient iMF Noise Sweep",
   figures from `figures.py` (all eight $\sigma$, both noise types, 64-D and in-plane $W_2$).
 - **Tests** of the 64-D metric: GPU suite 60207586 (65/67; the new split test had a bug in its
@@ -275,7 +273,7 @@ is 5.47–5.54 and 96% of its 1-step samples lie more than 2 from the plane (nai
 clean iMF: 2%). Retrained with evaluation every 2k steps (60233034, same GPU type, Tesla V100S),
 the run reproduces the original evaluations exactly (3.499 at 10k, 0.936 at 30k) and the break: 1-step
 $W_2^{64\text{D}}$ drifts slowly up from 0.91 at 32k to 1.29 at 90k, then rises at every evaluation:
-1.65 (92k), 2.73 (94k), 4.50 (96k), 5.84 (98k), with off-plane RMS 0.155 → 0.735. The 2-step value
+1.65 (92k), 2.73 (94k), 4.50 (96k), 5.84 (98k), 5.507 (100k, identical to the sweep run), with off-plane RMS 0.155 → 0.735. The 2-step value
 jumps too (1.30 → 2.32 at 94k) and then recovers to 1.38. It is a progressive drift of the one-step map
 over about 8k steps, not a single bad update. The logged training loss (one batch every 1k steps) has
 its largest value of the run at 72k (130, against 50–70 typical) and more values above 85 after 70k,
@@ -301,7 +299,7 @@ GPU nodes by up to 0.012 in $W_2$ (not bitwise reproducible across nodes).
 
 ## Next step
 
-When 60233034 finishes, read its 1-step $W_2^{64\text{D}}$ every 2k steps and report whether and when the one-step map breaks, and whether the training loss moves at the same step.
+Retrain the same arm with learning rate $5 \times 10^{-5}$ (a config override, `localize.sbatch`) and evaluation every 2k steps, to test whether the late one-step drift depends on step size; gradient clipping or a decaying schedule would need a change to `src/training.py` and goes to the human first.
 
 ## Blocked on
 
