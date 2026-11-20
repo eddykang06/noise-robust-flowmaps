@@ -67,6 +67,12 @@ coordinate: distance from the plane is √62 times it.
 #SBATCH --time=02:30:00   (submitted at 04:00:00, lowered with scontrol while pending)
 ```
 
+**Running: strong-noise sweep** (human, 2026-11-20: coarser grid reaching higher noise), same
+five arms and setup, σ ∈ {0.25, 0.5, 0.75, 1.0}. σ = 1.0 is the top: there t_n = 0.5, ambient
+keeps 47% of noisy draws and their target's E|·|² is 4.4× a clean point's; at σ = 1.5 it would
+keep 29% at 7×. Jobs 60207440 (0.25), 60207441 (0.5), 60207442 (0.75), 60207443 (1.0), header as
+above with `--mem=7G` (1.5 × 4.4 GB) and `--time=02:30:00`.
+
 **Standing decisions by the human**
 - 2026-11-20: no further seeds for the fixed-σ sweep.
 - 2026-11-19: one noise level per run, 75% clean (σ² ~ U[0, 1] per point left most noisy points
@@ -130,7 +136,7 @@ differs across GPU nodes by up to 0.012 in W2 (not bitwise reproducible across n
 
 ## Next step
 
-Await the human's next comparison for the fixed-σ sweep (no further seeds, human 2026-11-20).
+When the strong-noise jobs finish, re-score them at 1–8 steps in 64-D and add them to the sweep page.
 
 ## Blocked on
 
