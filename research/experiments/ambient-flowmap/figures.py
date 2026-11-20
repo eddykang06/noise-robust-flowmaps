@@ -45,21 +45,27 @@ SETS = {
                  "5 naive, uniform": ("imf-s42-2500a6d4", "arm5")},
         "jobs": ["60108782"], "metric": "wasserstein2", "colors": HUES},
 }
-# Fixed-sigma sweep, 75% clean (60187230/34/87/88), one set per sigma, all five arms
-# re-scored in 64-D by 60204483 (arm 1 is the clean run 60038059). Keys are <g|u><sigma*100><n|a>.
-RESCORE = "60204483"
-SWEEP = {"0.05": ["imf-s42-d2f56231", "ambient_imf-s42-7da581e8", "ambient_imf-s42-5d62af51", "imf-s42-f1bcb92c"],
-         "0.1": ["imf-s42-44ec811d", "ambient_imf-s42-d9acc2f3", "ambient_imf-s42-72c3ce86", "imf-s42-3542192e"],
-         "0.2": ["imf-s42-a42acddd", "ambient_imf-s42-a41185d9", "ambient_imf-s42-93ed43a6", "imf-s42-3d397500"],
-         "0.33": ["imf-s42-8fc1b105", "ambient_imf-s42-a013d25f", "ambient_imf-s42-cc685b61", "imf-s42-d3226d19"]}
+# Fixed-sigma sweeps, 75% clean, one set per sigma, all five arms re-scored in 64-D (arm 1 is the
+# clean run 60038059). Keys are <g|u><sigma*100><n|a>. sigma -> (re-scoring job, runs in key order):
+# 0.05-0.33 trained by 60187230/34/87/88 and re-scored by 60204483; 0.25-1.0 trained by
+# 60207440-43 and re-scored by 60224909.
+SWEEP = {"0.05": ("60204483", ["imf-s42-d2f56231", "ambient_imf-s42-7da581e8", "ambient_imf-s42-5d62af51", "imf-s42-f1bcb92c"]),
+         "0.1": ("60204483", ["imf-s42-44ec811d", "ambient_imf-s42-d9acc2f3", "ambient_imf-s42-72c3ce86", "imf-s42-3542192e"]),
+         "0.2": ("60204483", ["imf-s42-a42acddd", "ambient_imf-s42-a41185d9", "ambient_imf-s42-93ed43a6", "imf-s42-3d397500"]),
+         "0.25": ("60224909", ["imf-s42-082714c4", "ambient_imf-s42-ebdd3392", "ambient_imf-s42-535d6da3", "imf-s42-fed5112d"]),
+         "0.33": ("60204483", ["imf-s42-8fc1b105", "ambient_imf-s42-a013d25f", "ambient_imf-s42-cc685b61", "imf-s42-d3226d19"]),
+         "0.5": ("60224909", ["imf-s42-74d62519", "ambient_imf-s42-59feb107", "ambient_imf-s42-73b06472", "imf-s42-2692b6ff"]),
+         "0.75": ("60224909", ["imf-s42-8ef229cc", "ambient_imf-s42-146c8b8b", "ambient_imf-s42-3aa7de36", "imf-s42-947b3690"]),
+         "1.0": ("60224909", ["imf-s42-bf728638", "ambient_imf-s42-ca865094", "ambient_imf-s42-5412a8d1", "imf-s42-e56b68a9"])}
+CLEAN_JOB = "60204483"  # holds arm 1 (clean iMF) for every sigma
 ARMS = ["1 clean", "2 naive, Gaussian", "3 ambient, Gaussian", "4 ambient, uniform", "5 naive, uniform"]
-for sigma, runs in SWEEP.items():
+for sigma, (job, runs) in SWEEP.items():
     tag = f"{round(float(sigma) * 100):02d}"
     keys = [f"g{tag}n", f"g{tag}a", f"u{tag}a", f"u{tag}n"]
     SETS[f"sigma-{sigma}"] = {
         "title": f"Five arms, 75% clean, sigma = {sigma}",
         "runs": dict(zip(ARMS, [("imf-s42-f5958283", "arm1"), *zip(runs, keys)])),
-        "jobs": [RESCORE], "metric": FULL, "colors": HUES}
+        "jobs": sorted({CLEAN_JOB, job}), "metric": FULL, "colors": HUES}
 
 plt.rcParams.update({
     "font.size": 10, "axes.titlesize": 11, "axes.titleweight": "bold", "axes.titlelocation": "left",
@@ -134,7 +140,7 @@ def fig_samples(name, spec, evals, samples, out, lim=2.3):
 
 
 def sweep():
-    """Metrics and samples of every arm at every sigma of the fixed-sigma sweep."""
+    """Metrics and samples of every arm at every sigma of the fixed-sigma sweeps."""
     return {sigma: load(SETS[f"sigma-{sigma}"]) for sigma in SWEEP}
 
 
@@ -142,23 +148,23 @@ def title(k):
     return f"{k} sampling step{'s' if k > 1 else ''}"
 
 
-def fig_sigma(out, sets, arms, name, steps=(1, 2, 8)):
-    """W2 in 64-D against sigma at each step count in `steps`, one line per arm, clean iMF dashed."""
+def fig_sigma(out, sets, arms, name, steps=(1, 2, 8), metric=FULL):
+    """W2 (`metric`) against sigma at each step count in `steps`, one line per arm, clean iMF dashed."""
     sigmas = [float(s) for s in SWEEP]
     clean = sets[next(iter(SWEEP))][0][ARMS[0]]
     fig, axes = plt.subplots(1, len(steps), figsize=(3.3 * len(steps), 3.2), sharey=True)
     for ax, k in zip(axes, steps):
-        ax.axhline(clean[f"{FULL}@{k}"], color=MUTED, linestyle="--", linewidth=1.2, label="iMF, clean data")
+        ax.axhline(clean[f"{metric}@{k}"], color=MUTED, linestyle="--", linewidth=1.2, label="iMF, clean data")
         for label, short in arms.items():
-            ax.plot(sigmas, [sets[s][0][label][f"{FULL}@{k}"] for s in SWEEP], color=HUES[ARMS.index(label)],
+            ax.plot(sigmas, [sets[s][0][label][f"{metric}@{k}"] for s in SWEEP], color=HUES[ARMS.index(label)],
                     marker="o", label=short)
-        ax.set_xticks(sigmas, list(SWEEP))
+        ax.set_xticks([0, 0.25, 0.5, 0.75, 1.0])
         ax.set_xlabel("noise level σ")
         ax.set_title(title(k), fontweight="normal")
     axes[0].set_ylim(0, None)
-    axes[0].set_ylabel(W2_LABEL[FULL])
+    axes[0].set_ylabel(W2_LABEL[metric])
     axes[-1].legend(loc="upper left", bbox_to_anchor=(1.02, 1), fontsize=9)
-    fig.savefig(out / f"{name}-w2.png")
+    fig.savefig(out / f"{name}-{'w2' if metric == FULL else 'plane'}.png")
     plt.close(fig)
 
 
@@ -180,7 +186,8 @@ def fig_breakdown(out, sets, arms, name, steps=(1, 8)):
             plane, full = ev[f"wasserstein2@{k}"] ** 2, ev[f"{FULL}@{k}"] ** 2
             ax.bar(x, plane, width * 0.95, color=color)
             ax.bar(x, full - plane, width * 0.95, bottom=plane, color=color, alpha=0.35)
-        ax.set_xticks([-1, *range(len(sigmas))], ["clean", *[f"σ = {s}" for s in sigmas]])
+        ax.set_xticks([-1, *range(len(sigmas))], ["clean", *sigmas])
+        ax.set_xlabel("noise level σ")
         ax.set_title(title(k), fontweight="normal")
         ax.grid(axis="x", visible=False)
     axes[0].set_ylabel("W2² in 64-D")
@@ -217,13 +224,14 @@ def fig_compare_at(out, sets, arms, sigma, name, hist_step=8):
     ax.set_xscale("log", base=2)
     ax.set_xticks(STEPS, [str(k) for k in STEPS])
     ax.minorticks_off()
-    ax.set_ylim(0, 1.3)
+    ax.set_ylim(0, None)
     ax.set_xlabel("sampling steps")
     ax.set_ylabel(W2_LABEL[FULL])
-    ax.legend(loc="upper right", fontsize=9)
+    ax.legend(loc="best", fontsize=9)
 
     ax = mid.subplots()
-    bins = [i * 0.1 for i in range(47)]
+    top = max(max(samples[label]["off"][str(hist_step)]) for label in [ARMS[0], *arms])
+    bins = [i * top / 50 for i in range(51)]
     ax.hist(samples[ARMS[0]]["off"][str(hist_step)], bins=bins, histtype="step", color=MUTED, linewidth=1.5,
             linestyle="--", label="iMF, clean data")
     for label, short in arms.items():
@@ -260,15 +268,20 @@ def main(out):
         fig_steps(name, spec, evals, out)
         fig_samples(name, spec, evals, samples, out)
         print(f"{name}: wrote {name}-steps.png, -samples.png")
-    if (LOGS / RESCORE / "eval.txt").exists():
+    if all((LOGS / job / "eval.txt").exists() for job, _ in SWEEP.values()):
         sets = sweep()
         fig_sigma(out, sets, {label: label for label in ARMS[1:]}, "sweep-sigma")
+        fig_sigma(out, sets, {label: label for label in ARMS[1:]}, "sweep-sigma", metric="wasserstein2")
         gaussian = {"2 naive, Gaussian": "iMF", "3 ambient, Gaussian": "ambient iMF"}
         fig_sigma(out, sets, gaussian, "gaussian-imf-vs-ambient")
         fig_breakdown(out, sets, gaussian, "gaussian-imf-vs-ambient")
+        uniform = {"5 naive, uniform": "iMF", "4 ambient, uniform": "ambient iMF"}
+        fig_sigma(out, sets, uniform, "uniform-imf-vs-ambient")
+        fig_breakdown(out, sets, uniform, "uniform-imf-vs-ambient")
         for sigma in SWEEP:
             fig_compare_at(out, sets, gaussian, sigma, "gaussian-imf-vs-ambient")
-        print("wrote sweep-sigma-w2.png, gaussian-imf-vs-ambient-*.png")
+            fig_compare_at(out, sets, uniform, sigma, "uniform-imf-vs-ambient")
+        print("wrote sweep-sigma-w2.png, gaussian-/uniform-imf-vs-ambient-*.png")
 
 
 if __name__ == "__main__":

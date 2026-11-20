@@ -170,11 +170,12 @@ Five arms (brief), seed 42, 75% clean, one $\sigma$ per job (`sweep.sbatch`, `DI
   60207440, 60207441, 60207442, 60207443, all completed (1 h 43 min – 1 h 56 min, peak 4.2 GB).
   $\sigma = 1.0$ is the top: there ambient keeps 47% of noisy draws and their target's
   $\mathbb{E}\lVert\hat v\rVert^2$ is $4.4\times$ a clean point's (at $\sigma = 1.5$: 29%, $7\times$).
-- **Running: re-score of the strong-noise sweep** at $k = 1, 2, 3, 4, 8$ in 64-D, job 60224909
-  (`more-steps.sbatch`, keys `<g|u><σ·100><n|a>`), submitted with
+- **Re-score of the strong-noise sweep** at $k = 1, 2, 3, 4, 8$ in 64-D, job 60224909 (17 min 54 s,
+  peak 0.76 GB; `more-steps.sbatch`, keys `<g|u><σ·100><n|a>`), submitted with
   `--mem=1200M --mail-type=BEGIN,END` over the header
-  `--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=2 --time=00:30:00`
-  (last comparable re-score, 60204483, peaked at 0.77 GB).
+  `--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=2 --time=00:30:00`.
+- **Results page** for both sweeps (human, 2026-11-20): artifact "Ambient iMF Noise Sweep",
+  figures from `figures.py` (all eight $\sigma$, both noise types, 64-D and in-plane $W_2$).
 - **Tests** of the 64-D metric: GPU suite 60207586 (65/67; the new split test had a bug in its
   generator use, fixed and passing in CPU job 60211648, 59/59; `test_learns_the_checkerboard_in_one_step`
   has failed since 2026-11-10, 59185847, unrelated to this direction's changes).
@@ -239,23 +240,27 @@ worse ($k = 8$, $\sigma = 0.33$: 0.164 against 0.140), plausibly the cost of its
 One step is far from clean for every arm, clean included ($W_2^{64\text{D}} \approx 1.0$–$1.15$,
 almost all off the plane). Seed 42 only: signals, not results.
 
-**Strong-noise sweep, 75% clean**, $D = 64$, 100k steps, seed 42 (60207440–43; training-time
-evaluation, $k = 8$ pending re-score 60224909). $W_2^{64\text{D}}$ at $k = 1\,/\,2$ steps; clean iMF:
-1.148 / 0.623.
+**Strong-noise sweep, 75% clean**, $D = 64$, 100k steps, seed 42 (60207440–43; re-scored by
+60224909). $W_2^{64\text{D}}$ at $k = 1\,/\,2\,/\,8$ steps; clean iMF: 1.148 / 0.623 / 0.372.
 
 | $\sigma$ | 2 naive, Gaussian | 3 ambient, Gaussian | 4 ambient, uniform | 5 naive, uniform |
 |---|---|---|---|---|
-| 0.25 | 1.036 / 0.642 | 1.028 / 0.613 | 0.970 / 0.555 | 1.064 / 0.670 |
-| 0.5 | 1.055 / 1.144 | 0.981 / 0.854 | 0.918 / 0.833 | 1.136 / 1.152 |
-| 0.75 | 1.638 / 2.198 | 1.122 / 1.123 | 1.065 / 1.130 | 1.714 / 2.108 |
-| 1.0 | 2.551 / 3.179 | 5.507 / 1.332 | 1.349 / 1.493 | 2.613 / 3.161 |
+| 0.25 | 1.036 / 0.642 / 0.521 | 1.028 / 0.613 / 0.408 | 0.970 / 0.555 / 0.388 | 1.064 / 0.670 / 0.523 |
+| 0.5 | 1.054 / 1.151 / 1.300 | 0.991 / 0.865 / 0.929 | 0.924 / 0.848 / 0.920 | 1.137 / 1.141 / 1.282 |
+| 0.75 | 1.638 / 2.198 / 2.156 | 1.122 / 1.123 / 1.469 | 1.065 / 1.130 / 1.374 | 1.714 / 2.108 / 2.114 |
+| 1.0 | 2.551 / 3.179 / 3.072 | 5.507 / 1.332 / 2.030 | 1.349 / 1.493 / 1.919 | 2.613 / 3.161 / 3.000 |
 
-From $\sigma = 0.5$ on, naive iMF degrades sharply at both step counts (at $\sigma = 1.0$, 2 steps:
-3.2 against clean 0.62), while ambient iMF degrades slowly (1.3–1.5). The one exception is ambient
-Gaussian at $\sigma = 1.0$, 1 step: 5.507 at 100k, after 0.94–1.29 at every evaluation from 30k to
-90k; the jump is mostly off the plane (off-plane RMS 0.155 at 90k, 0.693 at 100k), and its 2-step
-value did not jump. A late one-step instability, not yet explained; the re-score will show whether
-it persists under fresh sampling. Seed 42 only: signals, not results.
+Across both sweeps ($\sigma$ from 0.05 to 1.0), ambient iMF is below naive iMF at 2 and 8 steps in
+every cell from $\sigma = 0.2$ on, for both noise types, and the gap grows with $\sigma$; below 0.2 the
+two are within 0.03. All of the gain is off the plane: in-plane $W_2$ at 8 steps is within about 0.02
+between ambient and naive at every $\sigma \le 0.75$, and at $\sigma = 1.0$ ambient Gaussian is worse in
+the plane (0.415 against 0.326). From $\sigma = 0.5$ on no arm recovers the spiral (plane samples are
+a blob at every step count), so the 64-D differences there measure distance from the plane, not
+shape. At high $\sigma$ ambient iMF gets worse with more steps ($\sigma = 1.0$, Gaussian: 1.332 at
+2 steps, 2.030 at 8). Ambient Gaussian at $\sigma = 1.0$, 1 step, is anomalous: 5.507 at 100k after
+0.94–1.29 at every evaluation from 30k to 90k, mostly off the plane (off-plane RMS 0.155 at 90k,
+0.693 at 100k), with a normal 2-step value; the re-score uses the same sampling seeds as training, so
+its matching value is not independent confirmation. Unexplained. Seed 42 only: signals, not results.
 
 **Five arms, 33% clean, $\sigma^2 \sim \mathcal{U}[0,1]$**, $D = 64$, 100k steps, seed 42
 (60098738; re-scored 60108782). In-plane $W_2$ and per-coordinate off-plane RMS (older metric):
@@ -275,7 +280,7 @@ GPU nodes by up to 0.012 in $W_2$ (not bitwise reproducible across nodes).
 
 ## Next step
 
-When re-score 60224909 finishes, add the $k = 4, 8$ columns for the strong-noise sweep and check whether the ambient Gaussian $\sigma = 1.0$ one-step jump reproduces.
+Find the cause of the ambient Gaussian $\sigma = 1.0$ one-step jump at 100k by sampling the 90k and 100k checkpoints with fresh seeds, before any further sweep.
 
 ## Blocked on
 
