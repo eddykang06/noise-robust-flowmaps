@@ -147,6 +147,53 @@ def fig_sigma(out):
     plt.close(fig)
 
 
+def fig_compare(out, name, arms, steps=(1, 2, 8), sample_step=8, lim=2.3):
+    """Two arms of the fixed-sigma sweep head to head: W2 against sigma at each step count in
+    `steps` (clean iMF dashed), and samples at `sample_step` steps, one row per arm, one column
+    per sigma."""
+    sets = {sigma: load(SETS[f"sigma-{sigma}"]) for sigma in SWEEP}
+    sigmas = [float(s) for s in SWEEP]
+    colors = {label: HUES[ARMS.index(label)] for label in arms}
+    clean = sets[next(iter(SWEEP))][0][ARMS[0]]
+
+    fig, axes = plt.subplots(1, len(steps), figsize=(3.3 * len(steps), 3.2), sharey=True)
+    for ax, k in zip(axes, steps):
+        ax.axhline(clean[f"wasserstein2@{k}"], color=MUTED, linestyle="--", linewidth=1.2, label="iMF, clean data")
+        for label in arms:
+            ax.plot(sigmas, [sets[s][0][label][f"wasserstein2@{k}"] for s in SWEEP], color=colors[label],
+                    marker="o", label=arms[label])
+        ax.set_xticks(sigmas, list(SWEEP))
+        ax.set_xlabel("noise level σ")
+        ax.set_title(f"{k} sampling step{'s' if k > 1 else ''}", fontweight="normal")
+    axes[0].set_ylim(0, None)
+    axes[0].set_ylabel("W2 to clean data (lower is better)")
+    axes[-1].legend(loc="upper left", bbox_to_anchor=(1.02, 1), fontsize=9)
+    fig.savefig(out / f"{name}-w2.png")
+    plt.close(fig)
+
+    fig, axes = plt.subplots(len(arms), len(SWEEP), figsize=(1.9 * len(SWEEP), 1.9 * len(arms)), squeeze=False)
+    for i, label in enumerate(arms):
+        for j, sigma in enumerate(SWEEP):
+            evals, samples = sets[sigma]
+            x = samples[label][str(sample_step)][:2048]
+            ax = axes[i, j]
+            ax.scatter([p[0] for p in x], [p[1] for p in x], s=1.2, linewidths=0, alpha=0.75,
+                       color=colors[label], rasterized=True)
+            ax.set(xlim=(-lim, lim), ylim=(-lim, lim), xticks=[], yticks=[], aspect="equal")
+            ax.grid(False)
+            for side in ax.spines.values():
+                side.set_visible(True)
+            ax.text(0.04, 0.04, f"W2 = {evals[label][f'wasserstein2@{sample_step}']:.3f}",
+                    transform=ax.transAxes, fontsize=8, color=INK)
+            if i == 0:
+                ax.set_title(f"σ = {sigma}", fontsize=10, loc="center", fontweight="normal", color=INK)
+            if j == 0:
+                ax.set_ylabel(arms[label], fontsize=10, color=INK)
+    fig.tight_layout()
+    fig.savefig(out / f"{name}-samples-{sample_step}step.png")
+    plt.close(fig)
+
+
 def main(out):
     out.mkdir(parents=True, exist_ok=True)
     for name, spec in SETS.items():
@@ -160,7 +207,10 @@ def main(out):
         print(f"{name}: wrote {name}-steps.png, -samples.png")
     if (LOGS / "60194400" / "eval.txt").exists():
         fig_sigma(out)
-        print("wrote sweep-sigma.png")
+        gaussian = {"2 naive, Gaussian": "iMF", "3 ambient, Gaussian": "ambient iMF"}
+        for k in (1, 8):
+            fig_compare(out, "gaussian-imf-vs-ambient", gaussian, sample_step=k)
+        print("wrote sweep-sigma.png, gaussian-imf-vs-ambient-*.png")
 
 
 if __name__ == "__main__":
