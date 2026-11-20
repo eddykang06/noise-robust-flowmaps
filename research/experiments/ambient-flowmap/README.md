@@ -183,12 +183,18 @@ Five arms (brief), seed 42, 75% clean, one $\sigma$ per job (`sweep.sbatch`, `DI
   RNG), job 60233034 (2 h 00 min, peak 1.16 GB; `localize.sbatch`, `DIM=64,SIGMA=1.0,ARM=3,EVAL_EVERY=2000`), submitted with
   `--mail-type=BEGIN,END` over the header
   `--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=2 --mem=2G --time=02:30:00`.
-- **Running: half learning rate**: the same arm retrained with lr $5 \times 10^{-5}$ and evaluation
-  every 2k steps, job 60246613 (`localize.sbatch`, `OVERRIDES="train.eval_every=2000 train.lr=0.00005"`),
-  submitted with `--mail-type=BEGIN,END --exclude=compute-g-17-168` over the header
+- **Half learning rate**: the same arm retrained with lr $5 \times 10^{-5}$ and evaluation
+  every 2k steps, job 60246613 (1 h 58 min, peak 1.11 GB; `localize.sbatch`,
+  `OVERRIDES="train.eval_every=2000 train.lr=0.00005"`), submitted with
+  `--mail-type=BEGIN,END --exclude=compute-g-17-168` over the header
   `--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=2 --mem=1800M --time=02:30:00`.
   The first submission, 60246388, failed after 22 s with an uncorrectable ECC error on the GPU of
   compute-g-17-168 (hardware), hence the exclusion.
+- **Running: naive control**: naive iMF, Gaussian, $\sigma = 1.0$ (arm 2) retrained with evaluation
+  every 2k steps at the sweep's lr, job 60256817 (`localize.sbatch`, `ARM=2`,
+  `OVERRIDES="train.eval_every=2000"`), submitted with `--mail-type=BEGIN,END --exclude=compute-g-17-168`
+  over the header
+  `--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=2 --mem=1700M --time=02:30:00`.
 - **Results page** for both sweeps (human, 2026-11-20): artifact "Ambient iMF Noise Sweep",
   figures from `figures.py` (all eight $\sigma$, both noise types, 64-D and in-plane $W_2$).
 - **Tests** of the 64-D metric: GPU suite 60207586 (65/67; the new split test had a bug in its
@@ -283,7 +289,12 @@ $W_2^{64\text{D}}$ drifts slowly up from 0.91 at 32k to 1.29 at 90k, then rises 
 jumps too (1.30 → 2.32 at 94k) and then recovers to 1.38. It is a progressive drift of the one-step map
 over about 8k steps, not a single bad update. The logged training loss (one batch every 1k steps) has
 its largest value of the run at 72k (130, against 50–70 typical) and more values above 85 after 70k,
-but these are single-batch samples, so they do not locate the cause. Across the same five seeds the other $\sigma = 1.0$ runs vary by up to 0.15 at
+but these are single-batch samples, so they do not locate the cause. At half the learning rate
+(60246613) the break does not occur: 1-step $W_2^{64\text{D}}$ is 0.75 at 50k (best of the run), then
+climbs smoothly to 1.18 at 90k and 1.30 at 100k (off-plane RMS 0.090 → 0.161), with no jump in
+90k–100k; 2-step is 1.49 at 100k (full lr: 1.33). So the late break needs the full step size, but
+both learning rates share a slow off-plane drift of the few-step map after about 50k steps while
+the in-plane 1-step value stays flat (0.25–0.29 at half lr). Across the same five seeds the other $\sigma = 1.0$ runs vary by up to 0.15 at
 2 and 8 steps, which bounds how far single-draw differences at this $\sigma$ can be read. Seed 42
 training only: signals, not results.
 
@@ -305,9 +316,14 @@ GPU nodes by up to 0.012 in $W_2$ (not bitwise reproducible across nodes).
 
 ## Next step
 
-When 60246613 finishes, compare its 1-step $W_2^{64\text{D}}$ curve with 60233034's: if the drift is gone or delayed, the late break is step-size driven; gradient clipping or a decaying schedule would need a change to `src/training.py` and goes to the human first.
+When 60256817 finishes, compare naive iMF's 1-step $W_2^{64\text{D}}$ curve after 50k with the two ambient runs': if naive iMF drifts off the plane too, the drift comes from training on noisy points at $\sigma = 1.0$ in general; if it stays flat, it is specific to the ambient target's high-variance updates.
 
 ## Blocked on
+
+**Late one-step break of ambient iMF at $\sigma = 1.0$ (2026-11-20).** It disappears at half the
+learning rate (60246613), so it is step-size driven. A stable fix at the configured lr needs either
+gradient-norm clipping or a decaying lr schedule in `build_optimizer` (`src/training.py`, which has
+neither); both depart from the official iMF optimizer, so the choice is the human's.
 
 **One-step quality of exact iMF on the toy (2026-11-18).** Even clean iMF is far from clean data
 in one step at every $D$ tried. Options, each a departure from exact iMF for the human to rule
