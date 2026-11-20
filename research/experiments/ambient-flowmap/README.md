@@ -280,7 +280,7 @@ GPU nodes by up to 0.012 in $W_2$ (not bitwise reproducible across nodes).
 
 ## Next step
 
-Find the cause of the ambient Gaussian $\sigma = 1.0$ one-step jump at 100k by sampling the 90k and 100k checkpoints with fresh seeds, before any further sweep.
+Find the cause of the ambient Gaussian $\sigma = 1.0$ one-step jump at 100k by sampling its 100k checkpoint (the only one saved) at 1 step with fresh seeds, before any further sweep.
 
 ## Blocked on
 
