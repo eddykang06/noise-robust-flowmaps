@@ -316,6 +316,54 @@ def fig_summary_samples(out, sets, step=8):
         plt.close(fig)
 
 
+# Two-way comparisons for the results page: name -> {label: (arm, colour)}.
+COMPARISONS = {
+    "gaussian-imf-vs-ambient": {"iMF, Gaussian": ("2 naive, Gaussian", NAIVE),
+                                "ambient iMF, Gaussian": ("3 ambient, Gaussian", AMBIENT)},
+    "ambient-gaussian-vs-uniform": {"ambient iMF, Gaussian": ("3 ambient, Gaussian", AMBIENT),
+                                    "ambient iMF, uniform": ("4 ambient, uniform", HUES[3])},
+}
+
+
+def fig_compare(out, sets, name, steps=(1, 2, 8), step=8):
+    """One two-way comparison: W2 in 64-D against sigma at each step count (clean iMF dashed),
+    and the two arms' samples in the plane at `step` steps, one column per sigma."""
+    pair, sigmas = COMPARISONS[name], [float(s) for s in sets]
+    clean = sets[next(iter(sets))][0][ARMS[0]]
+    with plt.rc_context({"font.size": 13, "axes.titlesize": 14, "lines.linewidth": 2.4, "lines.markersize": 7}):
+        fig, axes = plt.subplots(1, len(steps), figsize=(12, 3.9), sharey=True)
+        for ax, k in zip(axes, steps):
+            ax.axhline(clean[f"{FULL}@{k}"], color=MUTED, linestyle="--", linewidth=1.4, label="iMF on clean data only")
+            for label, (arm, color) in pair.items():
+                ax.plot(sigmas, [sets[s][0][arm][f"{FULL}@{k}"] for s in sets], color=color, marker="o", label=label)
+            ax.set_xticks([0, 0.25, 0.5, 0.75, 1.0])
+            ax.set_xlabel("noise level σ")
+            ax.set_title(title(k))
+            ax.set_ylim(0, None)
+        axes[0].set_ylabel("W2 in 64-D")
+        handles, labels = axes[0].get_legend_handles_labels()
+        fig.legend(handles[1:] + handles[:1], labels[1:] + labels[:1], loc="lower center", ncol=3,
+                   bbox_to_anchor=(0.5, -0.1))
+        fig.tight_layout()
+        fig.savefig(out / f"compare-{name}-w2.png")
+        plt.close(fig)
+
+        fig, axes = plt.subplots(len(pair), len(sets), figsize=(1.6 * len(sets), 1.75 * len(pair)))
+        for i, (label, (arm, color)) in enumerate(pair.items()):
+            for j, sigma in enumerate(sets):
+                evals, samples = sets[sigma]
+                ax = axes[i, j]
+                scatter(ax, samples[arm][str(step)][:2048], color, lim=2.6, size=1.0)
+                ax.text(0.05, 0.05, f"{evals[arm][f'{FULL}@{step}']:.2f}", transform=ax.transAxes, fontsize=11, color=INK)
+                if i == 0:
+                    ax.set_title(f"σ = {sigma}", fontsize=13, loc="center", fontweight="normal")
+                if j == 0:
+                    ax.set_ylabel(label.replace(", ", "\n"), fontsize=12, color=INK)
+        fig.tight_layout()
+        fig.savefig(out / f"compare-{name}-samples.png")
+        plt.close(fig)
+
+
 def main(out):
     out.mkdir(parents=True, exist_ok=True)
     for name, spec in SETS.items():
@@ -342,6 +390,8 @@ def main(out):
             fig_compare_at(out, sets, uniform, sigma, "uniform-imf-vs-ambient")
         fig_summary_w2(out, sets)
         fig_summary_samples(out, sets)
+        for name in COMPARISONS:
+            fig_compare(out, sets, name)
         print("wrote sweep-sigma-w2.png, gaussian-/uniform-imf-vs-ambient-*.png, summary-*.png")
 
 
