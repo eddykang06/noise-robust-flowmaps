@@ -33,7 +33,7 @@ forward passes.
 **Redirection (human, 2026-11-19): the corrupted data were too noisy; keep 75% clean (was 33%,
 the brief's value) and rerun the five arms at D = 64**, 100k steps, seed 42, same noise
 (σ² ~ U[0, 1], Gaussian or box-uniform, on all 64 coordinates). `arms.sh` now sets
-clean_frac 0.75; arm 1 is unchanged and resumes as finished. Job JOBID, `sweep.sbatch` with
+clean_frac 0.75; arm 1 is unchanged and resumes as finished. Job 60185808, `sweep.sbatch` with
 DIM=64, same header as 60098738 (`--mem=6G`: that job peaked at 4.1 GB).
 
 **Redirection (human, 2026-11-19): every figure, past, current and future, is a clean
