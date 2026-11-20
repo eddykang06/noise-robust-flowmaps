@@ -195,11 +195,16 @@ Five arms (brief), seed 42, 75% clean, one $\sigma$ per job (`sweep.sbatch`, `DI
   `ARM=2`, `OVERRIDES="train.eval_every=2000"`), submitted with `--mail-type=BEGIN,END --exclude=compute-g-17-168`
   over the header
   `--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=2 --mem=1700M --time=02:30:00`.
-- **Running: larger batch**: ambient iMF, Gaussian, $\sigma = 1.0$ at batch 4096 (4×, so a quarter
-  of the gradient variance per update; full lr, same 100k updates), job 60264427 (`localize.sbatch`,
-  `ARM=3`, `OVERRIDES="train.eval_every=2000 train.batch_size=4096"`), submitted with
+- **Larger batch**: ambient iMF, Gaussian, $\sigma = 1.0$ at batch 4096 (full lr, same 100k
+  updates), job 60264427 (2 h 23 min, peak 1.19 GB; `localize.sbatch`, `ARM=3`,
+  `OVERRIDES="train.eval_every=2000 train.batch_size=4096"`), submitted with
   `--mail-type=BEGIN,END --exclude=compute-g-17-168` over the header
   `--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=2 --mem=1700M --time=04:00:00`.
+- **Running: more training points**: ambient iMF, Gaussian, $\sigma = 1.0$ with $n = 100{,}000$
+  training points (10×, same 75% clean; batch 1024, full lr), job 60274565 (`localize.sbatch`,
+  `ARM=3`, `OVERRIDES="train.eval_every=2000 data.n=100000"`), submitted with
+  `--mail-type=BEGIN,END --exclude=compute-g-17-168` over the header
+  `--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=2 --mem=1800M --time=03:00:00`.
 - **Results page** for both sweeps (human, 2026-11-20): artifact "Ambient iMF Noise Sweep",
   figures from `figures.py` (all eight $\sigma$, both noise types, 64-D and in-plane $W_2$).
 - **Tests** of the 64-D metric: GPU suite 60207586 (65/67; the new split test had a bug in its
@@ -304,7 +309,14 @@ no such drift: its 1-step $W_2^{64\text{D}}$ falls from 4.43 at 30k to 2.68 at 6
 2.53 at 100k (off-plane RMS 0.56 → 0.32, monotone after 30k; the sweep run on another GPU type
 gave 2.55). So the late drift is specific to ambient training, whose targets on kept noisy points
 carry $4.4\times$ a clean point's $\mathbb{E}\lVert\hat v\rVert^2$ at $\sigma = 1.0$; ambient iMF still
-stays nearer the plane than naive iMF at every checkpoint. Across the same five seeds the other $\sigma = 1.0$ runs vary by up to 0.15 at
+stays nearer the plane than naive iMF at every checkpoint. At 4× the batch (60264427,
+a quarter of the gradient variance per update) the abrupt break does not occur, but the slow drift
+does: 1-step $W_2^{64\text{D}}$ is lowest at 50k (1.33), then rises to 1.60 at 100k (off-plane RMS
+0.158 → 0.198; 2-step 1.47 → 2.02), and the run is worse than batch 1024 throughout after 24k. So
+smaller updates (half lr, larger batch) prevent the break, but the drift after 50k is not gradient
+noise. A candidate is memorization: the 2,500 noisy points and their noise draws are fixed for the
+whole run ($n = 10{,}000$, about 10,000 epochs at batch 1024), and the ambient target is unbiased
+only on average over noise draws, not for a fixed draw. Across the same five seeds the other $\sigma = 1.0$ runs vary by up to 0.15 at
 2 and 8 steps, which bounds how far single-draw differences at this $\sigma$ can be read. Seed 42
 training only: signals, not results.
 
@@ -326,12 +338,12 @@ GPU nodes by up to 0.012 in $W_2$ (not bitwise reproducible across nodes).
 
 ## Next step
 
-When 60264427 finishes, compare its 1-step $W_2^{64\text{D}}$ curve after 50k with 60233034's (batch 1024): if the drift is gone or much smaller at 4× the batch, it is gradient noise from the high-variance ambient targets, which supports gradient clipping or lr decay (under Blocked on) over a change to the target itself.
+When 60274565 finishes, compare its 1-step $W_2^{64\text{D}}$ and off-plane RMS after 50k with 60233034's ($n = 10{,}000$): if the drift is gone or much later with 10× the points, it is memorization of fixed noise draws, and fresh noise per epoch (a change to the data pipeline, for the human) or a larger set is the fix.
 
 ## Blocked on
 
 **Late one-step break of ambient iMF at $\sigma = 1.0$ (2026-11-20).** It disappears at half the
-learning rate (60246613), so it is step-size driven. A stable fix at the configured lr needs either
+learning rate (60246613) and at 4× the batch (60264427), so it needs large, noisy updates. A stable fix at the configured lr needs either
 gradient-norm clipping or a decaying lr schedule in `build_optimizer` (`src/training.py`, which has
 neither); both depart from the official iMF optimizer, so the choice is the human's.
 
