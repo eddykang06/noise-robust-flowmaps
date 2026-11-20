@@ -30,6 +30,13 @@ forward passes.
 
 ## Current state
 
+- 2026-11-19 20:19, the human chose one noise level per run, 75% clean: arms 2-5 at
+  sigma in {0.05, 0.1, 0.2, 0.33} (fixed `gaussian` and new `uniform` corruption, bf26cfe),
+  D = 64, 100k steps, seed 42; arm 1 (clean) resumes from 60038059. `sweep.sbatch`
+  (gpu,gpu_quad; 1 GPU; 8 CPU; --mem=6G; 4 h), one job per sigma:
+  60187230 (0.05), 60187234 (0.1), 60187287 (0.2), 60187288 (0.33). CPU tests of the new
+  corruption: 60187229. `smoke.sbatch` now needs SIGMA too.
+
 - 2026-11-19 20:17, at the human's request: sweep 60185808 (75% clean, sigma^2 ~ U[0, 1]) cancelled
   after 9 min, before any record. All sweeps are on hold until the noising scheme is settled: the
   arm gap of the scaled spiral is about 0.67, and sigma^2 ~ U[0, 1] gives median sigma 0.71, so
@@ -485,7 +492,7 @@ numbers (MeanFlow, checkerboard) are superseded by the iMF pipeline and are not 
 
 ## Next step
 
-Settle the noising scheme with the human, then rerun the five-arm sweep with it.
+When the four sigma jobs finish, re-score their arms at 1-8 steps and give the sweep its own page.
 
 ## Blocked on
 
