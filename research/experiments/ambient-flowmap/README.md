@@ -101,7 +101,7 @@ steps (arm 1, clean: 0.236 and 0.155):
 | 0.33 | 0.250 / 0.173 | 0.259 / 0.188 | 0.246 / 0.185 | 0.263 / 0.179 |
 
 At 1 step the ambient arm is lower than its naive twin in 7 of 8 cells (by 0.001–0.045); at
-2 steps it is lower in 2 of 8. Every arm lies within 0.03 of clean iMF, and ambient arms at
+2 steps it is lower in 2 of 8. Every arm lies within 0.03 of clean iMF, and five of six ambient arms at
 σ ≤ 0.2 are below clean iMF at 1 step, so the spread is the size of single-seed noise: no
 result. The corruption at σ ≤ 0.33 with 75% clean barely hurts naive iMF.
 
