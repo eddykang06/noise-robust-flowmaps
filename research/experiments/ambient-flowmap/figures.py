@@ -194,6 +194,49 @@ def fig_compare(out, name, arms, steps=(1, 2, 8), sample_step=8, lim=2.3):
     plt.close(fig)
 
 
+def fig_compare_at(out, name, arms, sigma, lim=2.3):
+    """Two arms at one noise level: W2 against sampling steps (clean iMF dashed), and their
+    samples at every step count, one row per arm."""
+    evals, samples = load(SETS[f"sigma-{sigma}"])
+    colors = {label: HUES[ARMS.index(label)] for label in arms}
+    fig = plt.figure(figsize=(13, 3.6))
+    left, right = fig.subfigures(1, 2, width_ratios=[1, 2.3])
+    ax = left.subplots()
+    ax.plot(STEPS, [evals[ARMS[0]][f"wasserstein2@{k}"] for k in STEPS], color=MUTED, linestyle="--",
+            linewidth=1.2, label="iMF, clean data")
+    for label in arms:
+        ax.plot(STEPS, [evals[label][f"wasserstein2@{k}"] for k in STEPS], color=colors[label], marker="o",
+                label=arms[label])
+    ax.set_xscale("log", base=2)
+    ax.set_xticks(STEPS, [str(k) for k in STEPS])
+    ax.minorticks_off()
+    ax.set_ylim(0, 0.3)
+    ax.set_xlabel("sampling steps")
+    ax.set_ylabel("W2 to clean data (lower is better)")
+    ax.legend(loc="lower left", fontsize=9)
+    axes = right.subplots(len(arms), len(STEPS), squeeze=False)
+    for i, label in enumerate(arms):
+        for j, k in enumerate(STEPS):
+            x = samples[label][str(k)][:2048]
+            a = axes[i, j]
+            a.scatter([p[0] for p in x], [p[1] for p in x], s=0.8, linewidths=0, alpha=0.75,
+                      color=colors[label], rasterized=True)
+            a.set(xlim=(-lim, lim), ylim=(-lim, lim), xticks=[], yticks=[], aspect="equal")
+            a.grid(False)
+            for side in a.spines.values():
+                side.set_visible(True)
+            a.text(0.04, 0.04, f"{evals[label][f'wasserstein2@{k}']:.3f}", transform=a.transAxes, fontsize=7.5,
+                   color=INK)
+            if i == 0:
+                a.set_title(f"{k} step{'s' if k > 1 else ''}", fontsize=9, loc="center", fontweight="normal",
+                            color=INK)
+            if j == 0:
+                a.set_ylabel(arms[label], fontsize=9, color=INK)
+    fig.suptitle(f"σ = {sigma}", x=0.01, ha="left", fontsize=12, fontweight="normal")
+    fig.savefig(out / f"{name}-sigma-{sigma}.png")
+    plt.close(fig)
+
+
 def main(out):
     out.mkdir(parents=True, exist_ok=True)
     for name, spec in SETS.items():
@@ -210,6 +253,8 @@ def main(out):
         gaussian = {"2 naive, Gaussian": "iMF", "3 ambient, Gaussian": "ambient iMF"}
         for k in (1, 8):
             fig_compare(out, "gaussian-imf-vs-ambient", gaussian, sample_step=k)
+        for sigma in SWEEP:
+            fig_compare_at(out, "gaussian-imf-vs-ambient", gaussian, sigma)
         print("wrote sweep-sigma.png, gaussian-imf-vs-ambient-*.png")
 
 
