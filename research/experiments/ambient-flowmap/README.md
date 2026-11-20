@@ -490,31 +490,11 @@ loss); a larger network or more steps at D = 16; or giving the network t (origin
 Each departs from exact iMF in a different way, which the human has ruled on before.
 
 
-0. **GPU allowance.** Check jobs can wait hours with reason
+**GPU allowance.** Check jobs can wait hours with reason
    `AssocGrpGRESRunMinutes` (59122018 waited 16:06-20:47): the group's GPU run-minute limit is used
    up, apparently by the nine running `learned-cascade` jobs, which are not
    this direction's.
 
-1. **Shared code.** The run needs:
-   - `src/toy.py`: checkerboard and spiral samplers;
-   - `src/corrupt.py`: adds Gaussian noise of level σ_n to a fraction 1−p of
-     samples and returns a per-sample noise level (0 for clean);
-   - `src/training.py`: the MeanFlow loss, with an option for the ambient
-     target above;
-   - `src/sampling.py`: 1-step and k-step flow-map sampling;
-   - `scripts/train.py`, `sample.py` and `eval.py`, where `eval.py` computes
-     energy distance against fresh clean samples;
-   - a toy `configs/*.yaml`;
-   - training code that appends to `research/runs/<slug>.jsonl`.
-
-   Either you write these, or you authorize me to write them on this branch.
-   The second option is faster, and it is what I would propose: about 300
-   lines, with the MeanFlow loss and the ambient target in `src/training.py`.
-2. **Baseline protocol.** `research/baseline.md` needs the overrides for
-   `flowmap-clean` and `flowmap-corrupt`, the update or forward-pass budget,
-   and the metric. I propose energy distance, 10k samples, 1-step and 2-step
-   sampling, seeds 42–44, and adding clean-only MeanFlow as a third baseline
-   row.
 
 ## Dead ends
 
