@@ -311,6 +311,7 @@ def fig_summary_samples(out, sets, step=8):
                     ax.set_title(name, fontsize=13, loc="center", fontweight="normal")
                 if j == 0:
                     ax.set_ylabel(f"σ = {sigma}", fontsize=13, color=INK)
+        fig.suptitle(f"Samples at {title(step)}", x=0.01, ha="left", fontsize=15, fontweight="bold")
         fig.tight_layout()
         fig.savefig(out / f"summary-samples-{step}.png")
         plt.close(fig)
@@ -359,6 +360,7 @@ def fig_compare(out, sets, name, steps=(1, 2, 4, 8), step=4):
                     ax.set_title(f"σ = {sigma}", fontsize=13, loc="center", fontweight="normal")
                 if j == 0:
                     ax.set_ylabel(label.replace(", ", "\n"), fontsize=12, color=INK)
+        fig.suptitle(f"Samples at {title(step)}", x=0.01, ha="left", fontsize=15, fontweight="bold")
         fig.tight_layout()
         fig.savefig(out / f"compare-{name}-samples-{step}.png")
         plt.close(fig)
