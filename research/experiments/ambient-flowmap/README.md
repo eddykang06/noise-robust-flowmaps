@@ -108,6 +108,12 @@ is within 0.01 of clean; at σ = 0.2 the arms blur (W2@8 0.124–0.132); at σ =
 arm draws the spiral. Ambient iMF keeps samples on the plane (off-plane RMS 0.047 against 0.056
 naive at σ = 0.2, 0.06 against 0.09 at 0.33) but at σ = 0.33 its in-plane W2@8 is worse than
 naive (0.164, 0.174 against 0.140, 0.162). Single seed: no result either way.
+Why ambient can lose here (measured in the agent session, 2026-11-20): the noise is in all 64
+coordinates, so a noisy point is mostly off-plane (norm 2.6 at σ = 0.33) and only 2 of its 64
+noise coordinates touch the scored plane. The training set's own in-plane W2 to clean data is
+0.073 at σ = 0.05 and 0.125 at σ = 0.33, so naive's bias costs little on this metric, while
+ambient pays for removing it with a noisier target (noisy points' E|target|² 102 against 66
+for clean at σ = 0.33, 99th percentile 249) and drops 10% of noisy samples below t_n + 0.05.
 
 **Five arms, 33% clean, σ² ~ U[0, 1]**, D = 64, 100k steps, seed 42 (60098738; re-scored 60108782):
 
