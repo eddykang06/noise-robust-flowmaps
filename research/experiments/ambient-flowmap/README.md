@@ -41,7 +41,7 @@ head. 100k steps, batch 1024, Adam lr 1e-4 (β₂ 0.95, 100 warmup steps), EMA 0
 seed 42. Metric: exact W2 in the spiral's plane on 4096 samples (floor 0.122, two independent
 clean samples), and off-plane RMS (0 for clean data).
 
-**Running: fixed-σ sweep** (human, 2026-11-19), 75% clean, one noise level per job,
+**Fixed-σ sweep** (human, 2026-11-19), 75% clean, one noise level per job,
 σ ∈ {0.05, 0.1, 0.2, 0.33}, the five arms of the brief:
 
 | arm | data | objective |
@@ -52,9 +52,9 @@ clean samples), and off-plane RMS (0 for clean data).
 | 4 | uniform noise (variance σ²) on 25% | ambient iMF |
 | 5 | uniform noise (variance σ²) on 25% | iMF, noisy points as clean |
 
-`sweep.sbatch` with `DIM=64,SIGMA=<σ>`; jobs 60187230 (0.05), 60187234 (0.1), 60187287 (0.2),
-60187288 (0.33), all started 20:21–20:24, each ~1 h 55 min. Tests of the new fixed-σ uniform
-corruption pass (60187390: 58/58 non-GPU).
+`sweep.sbatch` with `DIM=64,SIGMA=<σ>`: jobs 60187230 (0.05), 60187234 (0.1), 60187287 (0.2),
+60187288 (0.33), all completed in 1 h 35 min – 1 h 53 min, peak 4.1–4.4 GB. Re-scoring at
+1–8 steps: 60194400 (`more-steps.sbatch`, `--mem=1200M` from 60108782's 0.79 GB peak).
 
 ```
 #SBATCH --partition=gpu,gpu_quad
@@ -90,6 +90,21 @@ corruption pass (60187390: 58/58 non-GPU).
 Larger D helps up to 64; all runs have plateaued (W2@1 changes < 3% from 90k to 100k). At
 D = 64, 4 steps reach the W2 floor, but 1 step (0.236) does not.
 
+**Fixed-σ sweep, 75% clean**, D = 64, 100k steps, seed 42 (60187230/34/87/88), W2 at 1 and 2
+steps (arm 1, clean: 0.236 and 0.155):
+
+| σ | 2 naive G | 3 ambient G | 4 ambient U | 5 naive U |
+|---|---|---|---|---|
+| 0.05 | 0.243 / 0.156 | 0.223 / 0.162 | 0.235 / 0.161 | 0.258 / 0.163 |
+| 0.1 | 0.261 / 0.164 | 0.216 / 0.155 | 0.254 / 0.178 | 0.255 / 0.168 |
+| 0.2 | 0.243 / 0.164 | 0.230 / 0.172 | 0.233 / 0.178 | 0.249 / 0.172 |
+| 0.33 | 0.250 / 0.173 | 0.259 / 0.188 | 0.246 / 0.185 | 0.263 / 0.179 |
+
+At 1 step the ambient arm is lower than its naive twin in 7 of 8 cells (by 0.001–0.045); at
+2 steps it is lower in 2 of 8. Every arm lies within 0.03 of clean iMF, and ambient arms at
+σ ≤ 0.2 are below clean iMF at 1 step, so the spread is the size of single-seed noise: no
+result. The corruption at σ ≤ 0.33 with 75% clean barely hurts naive iMF.
+
 **Five arms, 33% clean, σ² ~ U[0, 1]**, D = 64, 100k steps, seed 42 (60098738; re-scored 60108782):
 
 | arm | W2@1 | W2@2 | W2@8 | off-plane RMS @8 |
@@ -107,7 +122,7 @@ differs across GPU nodes by up to 0.012 in W2 (not bitwise reproducible across n
 
 ## Next step
 
-When the four σ jobs finish, re-score every arm at 1–8 steps and give the sweep its own page.
+When 60194400 finishes, draw the sweep's figures (W2 against steps, samples) and give it its own page.
 
 ## Blocked on
 
