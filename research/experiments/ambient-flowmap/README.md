@@ -174,6 +174,10 @@ Five arms (brief), seed 42, 75% clean, one $\sigma$ per job (`sweep.sbatch`, `DI
   peak 0.76 GB; `more-steps.sbatch`, keys `<g|u><σ·100><n|a>`), submitted with
   `--mem=1200M --mail-type=BEGIN,END` over the header
   `--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=2 --time=00:30:00`.
+- **Running: fresh-seed resample** of the $\sigma = 1.0$ runs (all four corrupted arms and clean
+  iMF), job 60226916 (`resample.sbatch`, sampling seeds 42, 1, 2, 3, 4 at $k = 1, 2, 8$; seed 42
+  should reproduce the re-score exactly), submitted with `--mail-type=BEGIN,END` over the header
+  `--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=2 --mem=1200M --time=00:30:00`.
 - **Results page** for both sweeps (human, 2026-11-20): artifact "Ambient iMF Noise Sweep",
   figures from `figures.py` (all eight $\sigma$, both noise types, 64-D and in-plane $W_2$).
 - **Tests** of the 64-D metric: GPU suite 60207586 (65/67; the new split test had a bug in its
@@ -280,7 +284,7 @@ GPU nodes by up to 0.012 in $W_2$ (not bitwise reproducible across nodes).
 
 ## Next step
 
-Find the cause of the ambient Gaussian $\sigma = 1.0$ one-step jump at 100k by sampling its 100k checkpoint (the only one saved) at 1 step with fresh seeds, before any further sweep.
+When resample 60226916 finishes, report whether the ambient Gaussian $\sigma = 1.0$ one-step value of 5.507 holds across fresh sampling seeds or is specific to seed 42's draw.
 
 ## Blocked on
 
