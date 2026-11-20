@@ -272,8 +272,14 @@ shape. At high $\sigma$ ambient iMF gets worse with more steps ($\sigma = 1.0$, 
 0.94–1.29 at every evaluation from 30k to 90k, with a normal 2-step value. It is a property of the
 final checkpoint, not of one sampling draw: with five sampling seeds (60226916) its 1-step $W_2^{64\text{D}}$
 is 5.47–5.54 and 96% of its 1-step samples lie more than 2 from the plane (naive iMF: 22–26%;
-clean iMF: 2%). Only the final checkpoint was saved, so when between 90k and 100k the one-step map
-broke is unknown. Across the same five seeds the other $\sigma = 1.0$ runs vary by up to 0.15 at
+clean iMF: 2%). Retrained with evaluation every 2k steps (60233034, same GPU type, Tesla V100S),
+the run reproduces the original evaluations exactly (3.499 at 10k, 0.936 at 30k) and the break: 1-step
+$W_2^{64\text{D}}$ drifts slowly up from 0.91 at 32k to 1.29 at 90k, then rises at every evaluation:
+1.65 (92k), 2.73 (94k), 4.50 (96k), 5.84 (98k), with off-plane RMS 0.155 → 0.735. The 2-step value
+jumps too (1.30 → 2.32 at 94k) and then recovers to 1.38. It is a progressive drift of the one-step map
+over about 8k steps, not a single bad update. The logged training loss (one batch every 1k steps) has
+its largest value of the run at 72k (130, against 50–70 typical) and more values above 85 after 70k,
+but these are single-batch samples, so they do not locate the cause. Across the same five seeds the other $\sigma = 1.0$ runs vary by up to 0.15 at
 2 and 8 steps, which bounds how far single-draw differences at this $\sigma$ can be read. Seed 42
 training only: signals, not results.
 
