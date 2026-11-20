@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Retrains one arm of the fixed-sigma sweep with config OVERRIDES (e.g. evaluation every 2k steps), to find when
 # its one-step map breaks (ambient Gaussian, sigma = 1.0: 5.507 at 100k after 0.94-1.29 up to
-# 90k). Evaluation does not touch the training RNG, so only the eval cadence differs from the
+# 90k). Evaluation does not touch the training RNG, so only the overrides differ from the
 # sweep run; the run gets its own id. Sized from 60233034 (one arm, eval every 2k: 2 h 00 min,
 # peak 1.16 GB).
 #   DESC=... research/bin/submit ambient-flowmap <this> --export=ALL,DIM=64,SIGMA=1.0,ARM=3,OVERRIDES="train.eval_every=2000"

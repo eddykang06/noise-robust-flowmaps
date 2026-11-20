@@ -183,6 +183,10 @@ Five arms (brief), seed 42, 75% clean, one $\sigma$ per job (`sweep.sbatch`, `DI
   RNG), job 60233034 (2 h 00 min, peak 1.16 GB; `localize.sbatch`, `DIM=64,SIGMA=1.0,ARM=3,EVAL_EVERY=2000`), submitted with
   `--mail-type=BEGIN,END` over the header
   `--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=2 --mem=2G --time=02:30:00`.
+- **Running: half learning rate**: the same arm retrained with lr $5 \times 10^{-5}$ and evaluation
+  every 2k steps, job 60246388 (`localize.sbatch`, `OVERRIDES="train.eval_every=2000 train.lr=0.00005"`),
+  submitted with `--mail-type=BEGIN,END` over the header
+  `--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=2 --mem=1800M --time=02:30:00`.
 - **Results page** for both sweeps (human, 2026-11-20): artifact "Ambient iMF Noise Sweep",
   figures from `figures.py` (all eight $\sigma$, both noise types, 64-D and in-plane $W_2$).
 - **Tests** of the 64-D metric: GPU suite 60207586 (65/67; the new split test had a bug in its
@@ -299,7 +303,7 @@ GPU nodes by up to 0.012 in $W_2$ (not bitwise reproducible across nodes).
 
 ## Next step
 
-Retrain the same arm with learning rate $5 \times 10^{-5}$ (a config override, `localize.sbatch`) and evaluation every 2k steps, to test whether the late one-step drift depends on step size; gradient clipping or a decaying schedule would need a change to `src/training.py` and goes to the human first.
+When 60246388 finishes, compare its 1-step $W_2^{64\text{D}}$ curve with 60233034's: if the drift is gone or delayed, the late break is step-size driven; gradient clipping or a decaying schedule would need a change to `src/training.py` and goes to the human first.
 
 ## Blocked on
 
