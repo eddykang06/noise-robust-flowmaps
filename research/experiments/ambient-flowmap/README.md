@@ -68,6 +68,7 @@ coordinate: distance from the plane is √62 times it.
 ```
 
 **Standing decisions by the human**
+- 2026-11-20: no further seeds for the fixed-σ sweep.
 - 2026-11-19: one noise level per run, 75% clean (σ² ~ U[0, 1] per point left most noisy points
   without structure: median σ 0.71 against an arm gap of 0.67). Sweep 60185808 cancelled.
 - 2026-11-19: D = 64; all figures are matplotlib (`figures.py`, run in the agent session).
@@ -129,7 +130,7 @@ differs across GPU nodes by up to 0.012 in W2 (not bitwise reproducible across n
 
 ## Next step
 
-Ask the human whether to run seeds 43–44 at σ ∈ {0.2, 0.33}, where the 64-D gap is large enough (0.07, 0.23 at 8 steps) to test against seed variance.
+Await the human's next comparison for the fixed-σ sweep (no further seeds, human 2026-11-20).
 
 ## Blocked on
 
