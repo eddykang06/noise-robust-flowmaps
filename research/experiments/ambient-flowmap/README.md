@@ -170,8 +170,9 @@ Five arms (brief), seed 42, 75% clean, one $\sigma$ per job (`sweep.sbatch`, `DI
   60207440, 60207441, 60207442, 60207443. $\sigma = 1.0$ is the top: there ambient keeps 47% of
   noisy draws and their target's $\mathbb{E}\lVert\hat v\rVert^2$ is $4.4\times$ a clean point's
   (at $\sigma = 1.5$: 29%, $7\times$).
-- **Tests** of the 64-D metric: 60207586 (`gpu-tests.sbatch`); 60204481 cancelled after Slurm
-  put its start two days out.
+- **Tests** of the 64-D metric: GPU suite 60207586 (65/67; the new split test had a bug in its
+  generator use, fixed and passing in CPU job 60211648, 59/59; `test_learns_the_checkerboard_in_one_step`
+  has failed since 2026-11-10, 59185847, unrelated to this direction's changes).
 
 Current `sweep.sbatch` header (the fixed-σ jobs ran with `--mem=6G`):
 
