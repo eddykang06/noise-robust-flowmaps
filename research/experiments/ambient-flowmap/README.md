@@ -224,7 +224,8 @@ Five arms (brief), seed 42, 75% clean, one $\sigma$ per job (`sweep.sbatch`, `DI
   `--mem=1200M --mail-type=BEGIN,END --exclude=compute-g-17-168` over the header
   `--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=2 --time=00:30:00`.
 - **Results page** for both sweeps (human, 2026-11-20): artifact "Ambient iMF Noise Sweep",
-  figures from `figures.py` (all eight $\sigma$, both noise types, 64-D and in-plane $W_2$).
+  figures from `figures.py` (all eight $\sigma$, both noise types, 64-D and in-plane $W_2$; since
+  2026-11-20 also $\sigma = 1.0$ at $n = 10{,}000$ against $n = 100{,}000$, `fig_data_size`).
 - **Tests** of the 64-D metric: GPU suite 60207586 (65/67; the new split test had a bug in its
   generator use, fixed and passing in CPU job 60211648, 59/59; `test_learns_the_checkerboard_in_one_step`
   has failed since 2026-11-10, 59185847, unrelated to this direction's changes).
@@ -377,7 +378,7 @@ GPU nodes by up to 0.012 in $W_2$ (not bitwise reproducible across nodes).
 
 ## Next step
 
-Add the $n = 100{,}000$ comparison to `figures.py` ($W_2^{64\text{D}}$ against steps for the five arms, and 4-step samples from 60321685's `plane-samples.json`) and to the results page, so the human sees it next to the $n = 10{,}000$ sweep when ruling on the training-set size (Blocked on).
+Wait for the human's ruling on training-set size and seeds (Blocked on); if the sweep moves to $n = 100{,}000$, rerun it with `sweep.sbatch` at `data.n=100000` for all eight $\sigma$, then re-score with `more-steps.sbatch`.
 
 ## Blocked on
 

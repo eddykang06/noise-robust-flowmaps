@@ -66,6 +66,14 @@ for sigma, (job, runs) in SWEEP.items():
         "title": f"Five arms, 75% clean, sigma = {sigma}",
         "runs": dict(zip(ARMS, [("imf-s42-f5958283", "arm1"), *zip(runs, keys)])),
         "jobs": sorted({CLEAN_JOB, job}), "metric": FULL, "colors": HUES}
+# The same five arms at sigma = 1.0 with 10x the training points (n = 100,000), trained by
+# 60291354, 60291357, 60274565, 60313028, 60313029 and re-scored together by 60321685.
+SETS["sigma-1.0-n100k"] = {
+    "title": "Five arms, 75% clean, sigma = 1.0, n = 100,000",
+    "runs": dict(zip(ARMS, [("imf-s42-24d83765", "c100k"), ("imf-s42-0d807dc0", "g100n100k"),
+                            ("ambient_imf-s42-152f4102", "g100a100k"), ("ambient_imf-s42-e6c7074c", "u100a100k"),
+                            ("imf-s42-8017d5d9", "u100n100k")])),
+    "jobs": ["60321685"], "metric": FULL, "colors": HUES}
 
 plt.rcParams.update({
     "font.size": 10, "axes.titlesize": 11, "axes.titleweight": "bold", "axes.titlelocation": "left",
@@ -366,6 +374,53 @@ def fig_compare(out, sets, name, steps=(1, 2, 4, 8), step=4):
         plt.close(fig)
 
 
+SIZES = {"n = 10,000": "sigma-1.0", "n = 100,000": "sigma-1.0-n100k"}
+SHORT = {"1 clean": "iMF, clean data", "2 naive, Gaussian": "iMF, Gaussian", "3 ambient, Gaussian": "ambient iMF, Gaussian",
+         "4 ambient, uniform": "ambient iMF, uniform", "5 naive, uniform": "iMF, uniform"}
+
+
+def fig_data_size(out, steps=(1, 2, 4, 8), step=4):
+    """sigma = 1.0 at both training-set sizes: W2 in 64-D against sampling steps for the five arms
+    (one panel per size, shared axis), and samples in the plane at `step` steps, one row per size."""
+    data = {size: load(SETS[name]) for size, name in SIZES.items()}
+    with plt.rc_context({"font.size": 13, "axes.titlesize": 14, "lines.linewidth": 2.4, "lines.markersize": 7}):
+        fig, axes = plt.subplots(1, len(data), figsize=(6 * len(data), 4.4), sharey=True)
+        for ax, (size, (evals, _)) in zip(axes, data.items()):
+            for arm, color in zip(ARMS, HUES):
+                ax.plot(steps, [evals[arm][f"{FULL}@{k}"] for k in steps], color=color, marker="o", label=SHORT[arm],
+                        linestyle="--" if arm == ARMS[0] else "-")
+            ax.set_xscale("log", base=2)
+            ax.set_xticks(steps, [str(k) for k in steps])
+            ax.minorticks_off()
+            ax.set_xlabel("sampling steps")
+            ax.set_title(f"σ = 1.0, {size} training points")
+            ax.set_ylim(0, None)
+        axes[0].set_ylabel("W2 in 64-D (lower is better)")
+        handles, labels = axes[0].get_legend_handles_labels()
+        fig.legend(handles, labels, loc="lower center", ncol=5, bbox_to_anchor=(0.5, -0.1), fontsize=12)
+        fig.tight_layout()
+        fig.savefig(out / "data-size-w2.png")
+        plt.close(fig)
+
+        fig, axes = plt.subplots(len(data), 1 + len(ARMS), figsize=(2.3 * (1 + len(ARMS)), 2.5 * len(data)))
+        for i, (size, (evals, samples)) in enumerate(data.items()):
+            for j, (arm, color) in enumerate([(None, MUTED), *zip(ARMS, HUES)]):
+                ax = axes[i, j]
+                scatter(ax, (samples[ARMS[0]]["true"] if arm is None else samples[arm][str(step)])[:2048], color,
+                        lim=2.6, size=1.6)
+                if arm is not None:
+                    ax.text(0.04, 0.04, f"{evals[arm][f'{FULL}@{step}']:.2f}", transform=ax.transAxes, fontsize=12, color=INK)
+                if i == 0:
+                    ax.set_title("true spiral" if arm is None else SHORT[arm].replace(", ", "\n"), fontsize=12,
+                                 loc="center", fontweight="normal")
+                if j == 0:
+                    ax.set_ylabel(size, fontsize=13, color=INK)
+        fig.suptitle(f"Samples at {title(step)}, σ = 1.0", x=0.01, ha="left", fontsize=15, fontweight="bold")
+        fig.tight_layout()
+        fig.savefig(out / f"data-size-samples-{step}.png")
+        plt.close(fig)
+
+
 def main(out):
     out.mkdir(parents=True, exist_ok=True)
     for name, spec in SETS.items():
@@ -395,6 +450,8 @@ def main(out):
         for name in COMPARISONS:
             fig_compare(out, sets, name)
         print("wrote sweep-sigma-w2.png, gaussian-/uniform-imf-vs-ambient-*.png, summary-*.png")
+        fig_data_size(out)
+        print("wrote data-size-w2.png, data-size-samples-4.png")
 
 
 if __name__ == "__main__":
