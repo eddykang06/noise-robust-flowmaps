@@ -205,10 +205,15 @@ Five arms (brief), seed 42, 75% clean, one $\sigma$ per job (`sweep.sbatch`, `DI
   Quadro RTX 8000; `localize.sbatch`, `ARM=3`, `OVERRIDES="train.eval_every=2000 data.n=100000"`),
   submitted with `--mail-type=BEGIN,END --exclude=compute-g-17-168` over the header
   `--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=2 --mem=1800M --time=03:00:00`.
-- **Running: matched controls at $n = 100{,}000$**: clean iMF (arm 1) and naive iMF, Gaussian,
-  $\sigma = 1.0$ (arm 2), same overrides, jobs 60291354 and 60291357 (`localize.sbatch`), submitted with
+- **Matched controls at $n = 100{,}000$**: clean iMF (arm 1) and naive iMF, Gaussian, $\sigma = 1.0$
+  (arm 2), same overrides, jobs 60291354 (2 h 02 min, peak 1.10 GB, Quadro RTX 8000) and 60291357
+  (1 h 52 min, peak 1.09 GB, Tesla V100S) (`localize.sbatch`), submitted with
   `--mail-type=BEGIN,END --exclude=compute-g-17-168` over the header
   `--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=2 --mem=1600M --time=03:00:00`.
+- **Running: re-score at $n = 100{,}000$** of those three runs at $k = 1, 2, 3, 4, 8$, job 60311981
+  (`more-steps.sbatch`, keys `c100k`, `g100n100k`, `g100a100k`), submitted with
+  `--mem=1200M --mail-type=BEGIN,END --exclude=compute-g-17-168` over the header
+  `--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=2 --time=00:30:00`.
 - **Results page** for both sweeps (human, 2026-11-20): artifact "Ambient iMF Noise Sweep",
   figures from `figures.py` (all eight $\sigma$, both noise types, 64-D and in-plane $W_2$).
 - **Tests** of the 64-D metric: GPU suite 60207586 (65/67; the new split test had a bug in its
@@ -321,7 +326,23 @@ $W_2$ keeps improving (0.299 → 0.236); it is part of exact iMF's weak one-step
 0.303 → 0.246) and its drift stops at 80k; at 100k it scores 1.146 at 1 step and 0.661 at 2 steps,
 against clean iMF's 1.148 and 0.623 (at $n = 10{,}000$, another GPU type) and naive iMF's 2.53 and 3.15
 (60256817, $n = 10{,}000$). Naive iMF's 1-step value falls through the whole run (4.43 at 30k, 2.53 at
-100k). The larger batch is worse than batch 1024 throughout after 24k. Across the same five seeds the other $\sigma = 1.0$ runs vary by up to 0.15 at
+100k). The larger batch is worse than batch 1024 throughout after 24k.
+
+**$\sigma = 1.0$, Gaussian, $n = 100{,}000$** (10× the sweep's training set, 75% clean), $D = 64$, 100k
+steps, seed 42, evaluated during training. $W_2^{64\text{D}}$ (in-plane $W_2$) at $k$ steps:
+
+| arm | $k=1$ | $k=2$ |
+|---|---|---|
+| 1 iMF, clean (60291354) | 1.166 (0.234) | 0.639 (0.160) |
+| 2 iMF, Gaussian (60291357) | 1.822 (0.394) | 2.459 (0.300) |
+| 3 ambient iMF, Gaussian (60274565) | 1.146 (0.246) | 0.661 (0.185) |
+
+With enough noisy points ambient iMF matches clean iMF in 64 dimensions at 1 and 2 steps, and
+beats naive iMF by 0.68 and 1.80; in the plane it is slightly behind clean (0.012 at 1 step, 0.025
+at 2) and well ahead of naive. Naive iMF improves through the whole run (2.50 at 20k), so it has
+not converged; ambient and clean have the same shape over training throughout (e.g. 0.787 and
+0.774 at 40k). Seed 42 only, across two GPU types (evaluation differs by up to 0.012 across nodes):
+a signal, not a result. Across the same five seeds the other $\sigma = 1.0$ runs vary by up to 0.15 at
 2 and 8 steps, which bounds how far single-draw differences at this $\sigma$ can be read. Seed 42
 training only: signals, not results.
 
@@ -343,7 +364,7 @@ GPU nodes by up to 0.012 in $W_2$ (not bitwise reproducible across nodes).
 
 ## Next step
 
-When 60291354 and 60291357 finish, compare the three arms at $n = 100{,}000$ (clean, naive and ambient iMF, Gaussian, $\sigma = 1.0$) at 1 and 2 steps: if ambient stays within the clean run's value and well below naive, ambient iMF recovers clean-data quality at $\sigma = 1.0$ once the noisy set is large; then re-score all three at 4 and 8 steps.
+When 60311981 finishes, add the 3-, 4- and 8-step $W_2^{64\text{D}}$ of the three $n = 100{,}000$ runs to their table, to see whether ambient iMF's match with clean iMF at 1 and 2 steps holds at more steps (at $n = 10{,}000$ ambient got worse with more steps at $\sigma = 1.0$).
 
 ## Blocked on
 
