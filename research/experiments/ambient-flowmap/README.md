@@ -214,10 +214,15 @@ Five arms (brief), seed 42, 75% clean, one $\sigma$ per job (`sweep.sbatch`, `DI
   (2 min 44 s, peak 0.76 GB; `more-steps.sbatch`, keys `c100k`, `g100n100k`, `g100a100k`), submitted with
   `--mem=1200M --mail-type=BEGIN,END --exclude=compute-g-17-168` over the header
   `--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=2 --time=00:30:00`.
-- **Running: uniform arms at $n = 100{,}000$**: ambient iMF (arm 4) and naive iMF (arm 5), uniform
-  noise, $\sigma = 1.0$, same overrides, jobs 60313028 and 60313029 (`localize.sbatch`), submitted with
+- **Uniform arms at $n = 100{,}000$**: ambient iMF (arm 4) and naive iMF (arm 5), uniform noise,
+  $\sigma = 1.0$, same overrides, jobs 60313028 (1 h 51 min, peak 1.25 GB, Quadro RTX 8000) and
+  60313029 (2 h 16 min, peak 1.12 GB, Tesla V100S) (`localize.sbatch`), submitted with
   `--mail-type=BEGIN,END --exclude=compute-g-17-168` over the header
   `--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=2 --mem=1600M --time=03:00:00`.
+- **Running: re-score of all five $n = 100{,}000$ arms** on one node at $k = 1, 2, 3, 4, 8$, job 60321685
+  (`more-steps.sbatch`, keys `c100k`, `g100n100k`, `g100a100k`, `u100a100k`, `u100n100k`), submitted with
+  `--mem=1200M --mail-type=BEGIN,END --exclude=compute-g-17-168` over the header
+  `--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=2 --time=00:30:00`.
 - **Results page** for both sweeps (human, 2026-11-20): artifact "Ambient iMF Noise Sweep",
   figures from `figures.py` (all eight $\sigma$, both noise types, 64-D and in-plane $W_2$).
 - **Tests** of the 64-D metric: GPU suite 60207586 (65/67; the new split test had a bug in its
@@ -369,7 +374,7 @@ GPU nodes by up to 0.012 in $W_2$ (not bitwise reproducible across nodes).
 
 ## Next step
 
-When 60313028 and 60313029 finish, re-score them at $k = 1, 2, 4, 8$ and add uniform-noise rows to the $n = 100{,}000$ table, to see whether ambient iMF's match with clean iMF holds for off-model (uniform) noise.
+When 60321685 finishes, replace the $n = 100{,}000$ table with its five arms at $k = 1, 2, 4, 8$ (all from one node), to see whether ambient iMF's match with clean iMF holds for uniform noise.
 
 ## Blocked on
 
