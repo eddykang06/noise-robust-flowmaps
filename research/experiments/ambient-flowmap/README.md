@@ -219,7 +219,7 @@ Five arms (brief), seed 42, 75% clean, one $\sigma$ per job (`sweep.sbatch`, `DI
   60313029 (2 h 16 min, peak 1.12 GB, Tesla V100S) (`localize.sbatch`), submitted with
   `--mail-type=BEGIN,END --exclude=compute-g-17-168` over the header
   `--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=2 --mem=1600M --time=03:00:00`.
-- **Running: re-score of all five $n = 100{,}000$ arms** on one node at $k = 1, 2, 3, 4, 8$, job 60321685
+- **Re-score of all five $n = 100{,}000$ arms** on one node at $k = 1, 2, 3, 4, 8$, job 60321685 (5 min 04 s, peak 0.76 GB)
   (`more-steps.sbatch`, keys `c100k`, `g100n100k`, `g100a100k`, `u100a100k`, `u100n100k`), submitted with
   `--mem=1200M --mail-type=BEGIN,END --exclude=compute-g-17-168` over the header
   `--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=2 --time=00:30:00`.
@@ -337,22 +337,25 @@ against clean iMF's 1.148 and 0.623 (at $n = 10{,}000$, another GPU type) and na
 (60256817, $n = 10{,}000$). Naive iMF's 1-step value falls through the whole run (4.43 at 30k, 2.53 at
 100k). The larger batch is worse than batch 1024 throughout after 24k.
 
-**$\sigma = 1.0$, Gaussian, $n = 100{,}000$** (10× the sweep's training set, 75% clean), $D = 64$, 100k
-steps, seed 42 (60291354, 60291357, 60274565; all re-scored on one node by 60311981).
+**$\sigma = 1.0$, $n = 100{,}000$** (10× the sweep's training set, 75% clean), $D = 64$, 100k steps,
+seed 42 (60291354, 60291357, 60274565, 60313028, 60313029; all re-scored on one node by 60321685).
 $W_2^{64\text{D}}$ (in-plane $W_2$) at $k$ steps:
 
 | arm | $k=1$ | $k=2$ | $k=4$ | $k=8$ |
 |---|---|---|---|---|
-| 1 iMF, clean | 1.155 (0.235) | 0.636 (0.159) | 0.398 (0.118) | 0.374 (0.098) |
-| 2 iMF, Gaussian | 1.822 (0.394) | 2.459 (0.300) | 3.269 (0.450) | 3.625 (0.501) |
-| 3 ambient iMF, Gaussian | 1.132 (0.248) | 0.653 (0.184) | 0.443 (0.165) | 0.405 (0.123) |
+| 1 iMF, clean | 1.166 (0.234) | 0.639 (0.160) | 0.398 (0.125) | 0.374 (0.107) |
+| 2 iMF, Gaussian | 1.841 (0.390) | 2.508 (0.296) | 3.315 (0.443) | 3.657 (0.495) |
+| 3 ambient iMF, Gaussian | 1.146 (0.246) | 0.661 (0.185) | 0.444 (0.169) | 0.406 (0.131) |
+| 4 ambient iMF, uniform | 1.102 (0.250) | 0.601 (0.179) | 0.430 (0.154) | 0.405 (0.138) |
+| 5 iMF, uniform | 2.339 (0.387) | 2.879 (0.311) | 3.416 (0.417) | 3.650 (0.461) |
 
-With 10× the points, ambient iMF is within 0.05 of clean iMF in 64 dimensions at every step count
-and improves with more steps (at $n = 10{,}000$ it got worse: 1.33 at 2 steps, 2.03 at 8). Naive iMF
-gets worse with more steps (1.82 → 3.63), as it learns the noisy data. In the plane ambient trails
-clean by 0.01–0.05. Naive iMF improves through the whole run (2.50 at 20k), so it has not
-converged; ambient and clean have the same shape over training throughout (e.g. 0.787 and
-0.774 at 40k). Seed 42 only: a signal, not a result. Across the same five seeds the other $\sigma = 1.0$ runs vary by up to 0.15 at
+With 10× the points, ambient iMF is within 0.05 of clean iMF in 64 dimensions at every step count,
+for Gaussian and for uniform noise of the same variance (off-model for the ambient target), and
+improves with more steps (at $n = 10{,}000$ it got worse: Gaussian 1.33 at 2 steps, 2.03 at 8). Naive
+iMF gets worse with more steps (1.84 → 3.66 Gaussian, 2.34 → 3.65 uniform), as it learns the noisy
+data. In the plane ambient trails clean by 0.01–0.04. Naive iMF improves through the whole run
+(Gaussian: 2.50 at 20k), so it has not converged; ambient and clean have the same shape over
+training (e.g. 0.787 and 0.774 at 40k). Seed 42 only: a signal, not a result. Across the same five seeds the other $\sigma = 1.0$ runs vary by up to 0.15 at
 2 and 8 steps, which bounds how far single-draw differences at this $\sigma$ can be read. Seed 42
 training only: signals, not results.
 
@@ -374,7 +377,7 @@ GPU nodes by up to 0.012 in $W_2$ (not bitwise reproducible across nodes).
 
 ## Next step
 
-When 60321685 finishes, replace the $n = 100{,}000$ table with its five arms at $k = 1, 2, 4, 8$ (all from one node), to see whether ambient iMF's match with clean iMF holds for uniform noise.
+Add the $n = 100{,}000$ comparison to `figures.py` ($W_2^{64\text{D}}$ against steps for the five arms, and 4-step samples from 60321685's `plane-samples.json`) and to the results page, so the human sees it next to the $n = 10{,}000$ sweep when ruling on the training-set size (Blocked on).
 
 ## Blocked on
 
