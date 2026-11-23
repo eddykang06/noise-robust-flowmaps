@@ -223,6 +223,12 @@ Five arms (brief), seed 42, 75% clean, one $\sigma$ per job (`sweep.sbatch`, `DI
   (`more-steps.sbatch`, keys `c100k`, `g100n100k`, `g100a100k`, `u100a100k`, `u100n100k`), submitted with
   `--mem=1200M --mail-type=BEGIN,END --exclude=compute-g-17-168` over the header
   `--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=2 --time=00:30:00`.
+- **Sweep at $n = 100{,}000$** (human, 2026-11-23), $\sigma \in \{0.05, 0.1, 0.2, 0.25, 0.33, 0.5, 0.75\}$,
+  arms 2–5, one arm per job (arm 1 and $\sigma = 1.0$ are the runs above): jobs 60555244–60555274
+  (28 jobs, named `af-n100k-s<σ>-a<arm>`), `localize.sbatch` with `OVERRIDES="data.n=100000"`
+  (evaluation every 10k; evaluation does not touch training), submitted with
+  `--mem=1900M --mail-type=BEGIN,END --exclude=compute-g-17-168` over the header
+  `--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=2 --time=03:00:00`.
 - **Results page** for both sweeps (human, 2026-11-20): artifact "Ambient iMF Noise Sweep",
   figures from `figures.py` (all eight $\sigma$, both noise types, 64-D and in-plane $W_2$; since
   2026-11-20 also $\sigma = 1.0$ at $n = 10{,}000$ against $n = 100{,}000$, `fig_data_size`).
@@ -243,6 +249,8 @@ Current `sweep.sbatch` header (the fixed-σ jobs ran with `--mem=6G`):
 
 ### Standing decisions by the human
 
+- 2026-11-23: the sweep moves to $n = 100{,}000$ training points (all eight $\sigma$); seeds
+  still 42 only.
 - 2026-11-20: $W_2$ in all 64 dimensions is the metric for everything; no further seeds for the
   fixed-σ sweep; strong-noise sweep up to $\sigma = 1.0$; math in the note renders as equations.
 - 2026-11-19: one noise level per run, 75% clean ($\sigma^2 \sim \mathcal{U}[0,1]$ per point was too
@@ -378,14 +386,13 @@ GPU nodes by up to 0.012 in $W_2$ (not bitwise reproducible across nodes).
 
 ## Next step
 
-Wait for the human's ruling on training-set size and seeds (Blocked on); if the sweep moves to $n = 100{,}000$, rerun it with `sweep.sbatch` at `data.n=100000` for all eight $\sigma$, then re-score with `more-steps.sbatch`.
+When jobs 60555244–60555274 finish, re-score all 33 runs at $n = 100{,}000$ (seven $\sigma$ × four arms, plus the five $\sigma = 1.0$ runs) on one node with `more-steps.sbatch` and replace the sweep tables with the $n = 100{,}000$ ones.
 
 ## Blocked on
 
-**Training-set size for the sweep (2026-11-20).** At $\sigma = 1.0$, ambient iMF with $n = 100{,}000$
-training points matches clean iMF at every step count, while at the sweep's $n = 10{,}000$ it is
-1.6–5.4× worse. Whether to rerun the fixed-σ sweep at $n = 100{,}000$, and whether this finding
-warrants seeds 43 and 44 (the standing decision is seed 42 only), is the human's call.
+**Seeds 43 and 44 (2026-11-20).** At $\sigma = 1.0$, $n = 100{,}000$, ambient iMF is within 0.05 of
+clean iMF at 1–8 steps on seed 42; whether to add seeds 43 and 44 (standing decision: seed 42 only)
+is the human's call.
 
 **Late one-step break of ambient iMF at $\sigma = 1.0$, $n = 10{,}000$ (2026-11-20).** Half the lr,
 4× the batch or 10× the training points each remove it. Keeping the sweep's data and step size would
