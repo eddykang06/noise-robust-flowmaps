@@ -421,6 +421,53 @@ def fig_data_size(out, steps=(1, 2, 4, 8), step=4):
         plt.close(fig)
 
 
+def fig_n100k_pair(out, noise, steps=(1, 2, 3, 4, 8), sample_steps=(1, 2, 4, 8)):
+    """sigma = 1.0, n = 100,000, one noise type: standard iMF against ambient iMF, with clean-data
+    iMF as the reference. W2 in 64-D against sampling steps, directly labelled; and samples in the
+    plane, one row per method, one column per step count."""
+    evals, samples = load(SETS["sigma-1.0-n100k"])
+    naive, ambient = PAIRS[f"{noise.capitalize()} noise"]
+    rows = [("iMF on clean data\n(reference)", ARMS[0], MUTED), ("standard iMF", naive, NAIVE),
+            ("ambient iMF", ambient, AMBIENT)]
+    with plt.rc_context({"font.size": 14, "axes.titlesize": 15, "lines.linewidth": 3, "lines.markersize": 8}):
+        fig, ax = plt.subplots(figsize=(9, 5))
+        for name, arm, color in rows:
+            ys = [evals[arm][f"{FULL}@{k}"] for k in steps]
+            ref = arm == ARMS[0]
+            ax.plot(steps, ys, color=color, marker=None if ref else "o", linestyle="--" if ref else "-",
+                    linewidth=2 if ref else 3, zorder=2 if ref else 3, label=f"{name.replace(chr(10), ' ')}: {ys[-1]:.2f} at 8 steps")
+        ax.legend(loc="center right", bbox_to_anchor=(1, 0.42), fontsize=13)
+        ax.set_xscale("log", base=2)
+        ax.set_xticks(steps, [str(k) for k in steps])
+        ax.minorticks_off()
+        ax.set_ylim(0, None)
+        ax.set_xlabel("sampling steps")
+        ax.set_ylabel("W2 in 64-D (lower is better)")
+        ax.set_title(f"{noise.capitalize()} noise, σ = 1.0, 100,000 training points")
+        fig.savefig(out / f"n100k-{noise}-w2.png")
+        plt.close(fig)
+
+        fig, axes = plt.subplots(len(rows), 1 + len(sample_steps), figsize=(2.4 * (1 + len(sample_steps)), 2.5 * len(rows)))
+        for i, (name, arm, color) in enumerate(rows):
+            if i == 0:
+                scatter(axes[0, 0], samples[ARMS[0]]["true"][:2048], MUTED, lim=2.6, size=1.6)
+            else:
+                axes[i, 0].axis("off")
+            axes[i, 1].set_ylabel(name, fontsize=14, color=color if arm != ARMS[0] else INK,
+                                  fontweight="normal" if arm == ARMS[0] else "bold")
+            for j, k in enumerate(sample_steps, 1):
+                scatter(axes[i, j], samples[arm][str(k)][:2048], color, lim=2.6, size=1.6)
+                axes[i, j].text(0.04, 0.04, f"{evals[arm][f'{FULL}@{k}']:.2f}", transform=axes[i, j].transAxes,
+                                fontsize=13, color=INK)
+        for j, name in enumerate(["true spiral", *(title(k) for k in sample_steps)]):
+            axes[0, j].set_title(name, fontsize=14, loc="center", fontweight="normal")
+        fig.suptitle(f"{noise.capitalize()} noise: samples (W2 in 64-D in each corner)", x=0.01, ha="left",
+                     fontsize=15, fontweight="bold")
+        fig.tight_layout()
+        fig.savefig(out / f"n100k-{noise}-samples.png")
+        plt.close(fig)
+
+
 def main(out):
     out.mkdir(parents=True, exist_ok=True)
     for name, spec in SETS.items():
@@ -452,6 +499,9 @@ def main(out):
         print("wrote sweep-sigma-w2.png, gaussian-/uniform-imf-vs-ambient-*.png, summary-*.png")
         fig_data_size(out)
         print("wrote data-size-w2.png, data-size-samples-4.png")
+        for noise in ("gaussian", "uniform"):
+            fig_n100k_pair(out, noise)
+        print("wrote n100k-gaussian-*.png, n100k-uniform-*.png")
 
 
 if __name__ == "__main__":
