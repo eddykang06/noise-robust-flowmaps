@@ -229,6 +229,16 @@ Five arms (brief), seed 42, 75% clean, one $\sigma$ per job (`sweep.sbatch`, `DI
   (evaluation every 10k; evaluation does not touch training), submitted with
   `--mem=1900M --mail-type=BEGIN,END --exclude=compute-g-17-168` over the header
   `--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=2 --time=03:00:00`.
+  All 28 completed (1 h 14 min – 1 h 53 min).
+- **Re-score of all 33 runs at $n = 100{,}000$** on one node at $k = 1, 2, 3, 4, 8$, job 60627029
+  (`more-steps.sbatch`, keys `c100k` and `<g|u><σ·100><n|a>100k`), submitted with
+  `--mem=1200M --mail-type=BEGIN,END --exclude=compute-g-17-168` over the header
+  `--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=2 --time=00:50:00`.
+- **Consolidated main** (human, 2026-11-24): this branch's shared code moved onto main in worktree
+  `/n/scratch/users/e/edk005/nrfm/main-consolidate` (branch `consolidate`, 3530c9d). Job 60626861
+  (`consolidate-check.sbatch`, `consolidate_check.py`) checks it bitwise against b9ea442 and runs the
+  full test suite, submitted with `--mail-type=BEGIN,END --exclude=compute-g-17-168` over the header
+  `--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=4 --mem=2G --time=01:30:00`.
 - **Results page** for both sweeps (human, 2026-11-20): artifact "Ambient iMF Noise Sweep",
   figures from `figures.py` (all eight $\sigma$, both noise types, 64-D and in-plane $W_2$; since
   2026-11-20 also $\sigma = 1.0$ at $n = 10{,}000$ against $n = 100{,}000$, `fig_data_size`).
@@ -249,6 +259,8 @@ Current `sweep.sbatch` header (the fixed-σ jobs ran with `--mem=6G`):
 
 ### Standing decisions by the human
 
+- 2026-11-24: consolidate the code on main: spiral only (checkerboard removed), current
+  pipeline included, behaviour verified unchanged; push straight to main.
 - 2026-11-23: the sweep moves to $n = 100{,}000$ training points (all eight $\sigma$); a single
   seed (42) for now, no triplicates; speed of iteration is the priority. Results page for the
   $n = 100{,}000$, $\sigma = 1.0$ runs: artifact "Ambient iMF at 100k Points".
@@ -387,7 +399,7 @@ GPU nodes by up to 0.012 in $W_2$ (not bitwise reproducible across nodes).
 
 ## Next step
 
-When jobs 60555244–60555274 finish, re-score all 33 runs at $n = 100{,}000$ (seven $\sigma$ × four arms, plus the five $\sigma = 1.0$ runs) on one node with `more-steps.sbatch` and replace the sweep tables with the $n = 100{,}000$ ones.
+When re-score 60627029 finishes, replace the sweep tables with the $n = 100{,}000$ ones and rebuild the results page; when check 60626861 passes, push the consolidated main.
 
 ## Blocked on
 

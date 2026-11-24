@@ -9,7 +9,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=2G
-#SBATCH --time=00:30:00
+#SBATCH --time=00:50:00
 #SBATCH --output=/n/scratch/users/e/edk005/nrfm/slurm/%x-%j.out
 set -euo pipefail
 : "${RUNS:?set RUNS=\"<run name>:<key> ...\"}"
