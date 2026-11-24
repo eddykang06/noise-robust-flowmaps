@@ -17,6 +17,7 @@ import torch
 from scipy import linalg
 from scipy.optimize import linear_sum_assignment
 
+from src.data import DEVICE
 from src.embed import frame
 
 
@@ -57,7 +58,7 @@ def precision_recall(real: torch.Tensor, fake: torch.Tensor, k: int = 3) -> tupl
     def covered(points, support):
         radii = torch.cdist(support, support).kthvalue(k + 1, dim=1).values  # +1: itself
         return (torch.cdist(points, support) <= radii).any(1).float().mean().item()
-    real, fake = real.float().cuda(), fake.float().cuda()
+    real, fake = real.float().to(DEVICE), fake.float().to(DEVICE)
     return covered(fake, real), covered(real, fake)
 
 
@@ -71,14 +72,14 @@ def class_score(probs: torch.Tensor) -> float:
 def inception():
     """The FID Inception network as TorchScript (from StyleGAN2-ADA; scripts/prepare_data.py)."""
     from src.datasets import root
-    return torch.jit.load(root() / "weights" / "inception-2015-12-05.pt").eval().cuda()
+    return torch.jit.load(root() / "weights" / "inception-2015-12-05.pt", map_location=DEVICE).eval()
 
 
 @torch.no_grad()
 def inception_features(images: torch.Tensor):
     net, feats, probs = inception(), [], []
     for chunk in images.split(250):
-        chunk = chunk.cuda()
+        chunk = chunk.to(DEVICE)
         feats.append(net(chunk, return_features=True))
         probs.append(net(chunk, no_output_bias=True))
     return torch.cat(feats), torch.cat(probs)

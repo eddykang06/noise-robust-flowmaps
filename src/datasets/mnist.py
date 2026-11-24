@@ -14,7 +14,7 @@ import torch.nn.functional as F
 from torch import nn
 
 from src.config import Config
-from src.data import Batch
+from src.data import DEVICE, Batch
 from src.datasets import root
 from src.plots import image_grid
 
@@ -77,25 +77,25 @@ class Classifier(nn.Module):
 def train_classifier(epochs: int = 5, seed: int = 0) -> float:
     """Trains the metric classifier on the train split; saves it and returns test accuracy."""
     torch.manual_seed(seed)
-    net, (x, y) = Classifier().cuda(), load("train")
+    net, (x, y) = Classifier().to(DEVICE), load("train")
     opt = torch.optim.Adam(net.parameters(), lr=1e-3)
     for _ in range(epochs):
         for idx in torch.randperm(len(y)).split(256):
-            loss = F.cross_entropy(net(x[idx].cuda()), y[idx].cuda())
+            loss = F.cross_entropy(net(x[idx].to(DEVICE)), y[idx].to(DEVICE))
             opt.zero_grad()
             loss.backward()
             opt.step()
     torch.save(net.state_dict(), root() / "mnist" / "classifier.pt")
     x, y = load("test")
     with torch.no_grad():
-        return (net.eval()(x.cuda()).argmax(1).cpu() == y).float().mean().item()
+        return (net.eval()(x.to(DEVICE)).argmax(1).cpu() == y).float().mean().item()
 
 
 @cache
 def classifier() -> Classifier:
     net = Classifier()
     net.load_state_dict(torch.load(root() / "mnist" / "classifier.pt", map_location="cpu"))
-    return net.eval().cuda()
+    return net.eval().to(DEVICE)
 
 
 @torch.no_grad()
@@ -103,7 +103,7 @@ def classify(images: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
     """Features and class probabilities of uint8 images `[B, 3, 32, 32]`."""
     net, feats, probs = classifier(), [], []
     for chunk in images.split(1000):
-        f = net.features(chunk[:, :1].cuda().float() / 127.5 - 1)
+        f = net.features(chunk[:, :1].to(DEVICE).float() / 127.5 - 1)
         feats.append(f)
         probs.append(net.head(f).softmax(1))
     return torch.cat(feats), torch.cat(probs)

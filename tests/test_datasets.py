@@ -89,7 +89,6 @@ def test_class_score_counts_confident_distinct_classes():
     assert abs(class_score(torch.eye(10).repeat(10, 1)) - 10.0) < 1e-4
 
 
-@pytest.mark.gpu
 def test_precision_recall(gen):
     real = torch.randn(2000, 4, generator=gen(0))
     assert precision_recall(real, real) == (1.0, 1.0)

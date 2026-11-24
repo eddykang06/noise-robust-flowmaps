@@ -18,7 +18,7 @@ import torch
 from PIL import Image
 
 from src.config import Config
-from src.data import Batch
+from src.data import DEVICE, Batch
 from src.datasets import root
 from src.plots import image_grid
 
@@ -31,7 +31,7 @@ CHUNK = 4096
 @cache
 def vae():
     from diffusers import AutoencoderKL
-    return AutoencoderKL.from_pretrained(VAE, cache_dir=root() / "weights").eval().cuda()
+    return AutoencoderKL.from_pretrained(VAE, cache_dir=root() / "weights").eval().to(DEVICE)
 
 
 def center_crop(image: Image.Image, size: int = 256) -> np.ndarray:
@@ -57,7 +57,7 @@ def prepare(src: Path, split: str, batch_size: int = 64):
     latents = np.lib.format.open_memmap(out / f"{split}_latents.npy", "w+", np.float32, (flips * len(files), 4, 32, 32))
     for i in range(0, len(files), batch_size):
         chunk = files[i:i + batch_size]
-        x = torch.from_numpy(np.stack([center_crop(Image.open(f)) for f, _ in chunk])).cuda()
+        x = torch.from_numpy(np.stack([center_crop(Image.open(f)) for f, _ in chunk])).to(DEVICE)
         x = x.permute(0, 3, 1, 2).float() / 127.5 - 1
         for k in range(flips):
             z = vae().encode(x.flip(3) if k else x).latent_dist.mean * SCALE
@@ -102,7 +102,7 @@ def reference(cfg: Config, n: int, gen: torch.Generator) -> Batch:
 
 @torch.no_grad()
 def to_images(x: torch.Tensor) -> torch.Tensor:
-    images = [vae().decode(z.cuda().float() / SCALE).sample for z in x.split(64)]
+    images = [vae().decode(z.to(DEVICE).float() / SCALE).sample for z in x.split(64)]
     return ((torch.cat(images).clamp(-1, 1) + 1) * 127.5).round().to(torch.uint8)
 
 

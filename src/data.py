@@ -12,6 +12,8 @@ from dataclasses import dataclass, fields, replace
 import torch
 from torch import Tensor
 
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"  # for data preparation and metrics; training needs CUDA
+
 
 @dataclass
 class Batch:
