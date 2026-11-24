@@ -1,6 +1,6 @@
 """Train one run.
 
-    python -m scripts.train --config configs/toy.yaml slug=<slug> seed=42 [key=value ...]
+    python -m scripts.train --config configs/imf.yaml slug=<slug> seed=42 [key=value ...]
 """
 
 import argparse

@@ -2,7 +2,7 @@
 # One GPU job running one command from the repo root, in env nrfm. Submit from
 # the repo root, passing the command in CMD:
 #
-#   sbatch --export=ALL,CMD="python -m scripts.train --config configs/toy.yaml slug=<name> seed=42" \
+#   sbatch --export=ALL,CMD="python -m scripts.train --config configs/imf.yaml slug=<name> seed=42" \
 #     jobs/train.sbatch
 #
 # --export splits on commas and $CMD on spaces, so an override containing either

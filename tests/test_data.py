@@ -2,14 +2,13 @@ from dataclasses import replace
 
 import pytest
 import torch
-import torch.nn.functional as F
 
 from src.config import load
-from src.corrupt import gaussian
+from src.corrupt import box_uniform_var, gaussian, gaussian_uniform_var, uniform
 from src.data import Batch
-from src.embed import basis, split
-from src.metrics import energy_distance
-from src.toy import TOYS, sample_clean
+from src.embed import basis, frame
+from src.metrics import wasserstein2
+from src.toy import sample_clean, spiral
 from src.training import build_dataset, reference
 
 CORRUPT = ["slug=test", "corruption={name: gaussian, sigma: 0.3, clean_frac: 0.1}"]
@@ -22,19 +21,13 @@ def test_batch_indexes_set_fields_and_keeps_unset_ones():
     assert sub.mask is None and len(sub) == 2
 
 
-@pytest.mark.parametrize("name", TOYS)
-def test_toys_have_unit_variance(name, gen):
-    var = TOYS[name](200_000, gen(0)).var(0)
+def test_spiral_has_unit_variance(gen):
+    var = spiral(200_000, gen(0)).var(0)
     assert torch.allclose(var, torch.ones(2), atol=0.1), var
 
 
-def test_checkerboard_mass_only_on_dark_squares(gen):
-    xy = (TOYS["checkerboard"](200_000, gen(0)) * 1.15).floor()
-    assert ((xy[:, 0] + xy[:, 1]) % 2 == 0).all()
-
-
 def test_dataset_is_fixed_by_seed_and_distinct_from_reference():
-    cfg = load("configs/toy.yaml", CORRUPT)
+    cfg = load("configs/imf.yaml", CORRUPT)
     d = build_dataset(cfg)
     assert torch.equal(d.x, build_dataset(cfg).x)
     assert not torch.equal(d.x, build_dataset(replace(cfg, seed=43)).x)
@@ -42,63 +35,82 @@ def test_dataset_is_fixed_by_seed_and_distinct_from_reference():
 
 
 def test_clean_only_keeps_exactly_the_clean_samples():
-    cfg = load("configs/toy.yaml", CORRUPT)
+    cfg = load("configs/imf.yaml", CORRUPT)
     d = build_dataset(cfg)
     clean = build_dataset(replace(cfg, data={**cfg.data, "keep_noisy": False}))
     assert torch.equal(clean.x, d.x[d.sigma == 0]) and (clean.sigma == 0).all()
 
 
-def test_gaussian_corruption(gen):
-    clean = sample_clean("checkerboard", 200_000, gen(1))
-    obs = gaussian(clean, gen(2), sigma=0.3, clean_frac=0.1)
+@pytest.mark.parametrize("corrupt", [gaussian, uniform])
+def test_fixed_sigma_corruptions(gen, corrupt):
+    clean = sample_clean("spiral", 200_000, gen(1))
+    obs = corrupt(clean, gen(2), sigma=0.3, clean_frac=0.1)
     noisy = obs.sigma > 0
+    noise = (obs.x - clean.x)[noisy]
     assert abs(noisy.float().mean() - 0.9) < 0.005
-    assert abs((obs.x - clean.x)[noisy].std() - 0.3) < 0.003
+    assert abs(noise.std() - 0.3) < 0.003 and abs(noise.mean()) < 0.003
     assert torch.equal(obs.sigma.unique(), torch.tensor([0.0, 0.3]))
     assert torch.equal(obs.x[~noisy], clean.x[~noisy])
+    if corrupt is uniform:
+        assert noise.abs().max() <= 0.3 * 3 ** 0.5 + 1e-5
 
 
-def test_energy_distance(gen):
-    p, q = torch.randn(5000, 2, generator=gen(4)), torch.randn(5000, 2, generator=gen(5))
-    assert abs(energy_distance(p, p)) < 1e-6
-    assert abs(energy_distance(p, q) - energy_distance(q, p)) < 1e-6
-    assert energy_distance(p, q) < 0.01 < 0.3 < energy_distance(p, q + 1)
+@pytest.mark.parametrize("corrupt", [gaussian_uniform_var, box_uniform_var])
+def test_per_sample_variance_corruptions(gen, corrupt):
+    clean = sample_clean("spiral", 200_000, gen(1))
+    obs = corrupt(clean, gen(2), var_max=10.0, clean_frac=1 / 3)
+    noisy = obs.sigma > 0
+    var = obs.sigma[noisy] ** 2
+    assert abs(noisy.float().mean() - 2 / 3) < 0.005
+    assert var.max() <= 10.0 and abs(var.mean() - 5.0) < 0.05 and abs(var.std() - 10 / 12 ** 0.5) < 0.05
+    z = (obs.x - clean.x)[noisy] / obs.sigma[noisy, None]
+    assert abs(z.mean()) < 0.01 and abs(z.std() - 1.0) < 0.01
+    assert torch.equal(obs.x[~noisy], clean.x[~noisy])
+    if corrupt is box_uniform_var:
+        assert z.abs().max() <= 3 ** 0.5 + 1e-5
 
 
-def test_unset_dim_is_the_unembedded_2d_pipeline(gen):
-    """Without `data.dim`, the dataset is the toy sample corrupted in place, as before
-    embedding existed, and `dim: 2` gives the same data."""
-    cfg = load("configs/toy.yaml", CORRUPT)
-    g = gen(cfg.seed)
-    expected = gaussian(sample_clean("checkerboard", cfg.data["n"], g), g, sigma=0.3, clean_frac=0.1)
-    d = build_dataset(cfg)
-    assert torch.equal(d.x, expected.x) and torch.equal(d.sigma, expected.sigma)
-    two = load("configs/toy.yaml", [*CORRUPT, "data.dim=2", "model.dim=2"])
-    assert torch.equal(build_dataset(two).x, d.x) and torch.equal(reference(two).x, reference(cfg).x)
-    plane, rest = split(d.x, 2)
-    assert plane is d.x and rest is None
+def test_wasserstein2(gen):
+    p, q = torch.randn(1000, 2, generator=gen(4)), torch.randn(1000, 2, generator=gen(5))
+    assert wasserstein2(p, p) < 1e-6
+    assert abs(wasserstein2(p, q) - wasserstein2(q, p)) < 1e-9
+    # A translation is optimally coupled by itself, so W2 is its length.
+    assert abs(wasserstein2(p, p + torch.tensor([3.0, 4.0])) - 5.0) < 1e-5
+    # In one dimension the optimal plan matches sorted samples.
+    a, b = p[:, :1].double(), q[:, :1].double()
+    sorted_w2 = (a.sort(0).values - b.sort(0).values).square().mean().sqrt().item()
+    assert abs(wasserstein2(a, b) - sorted_w2) < 1e-9
 
 
-@pytest.mark.parametrize("dim", [3, 16, 512])
+def test_full_wasserstein2_splits_into_plane_and_off_plane(gen):
+    """Against data on the plane, the off-plane cost of a pair does not depend on the
+    matching, so W2 in D dimensions is sqrt(W2 in the plane^2 + mean squared distance off it)."""
+    dim, n = 8, 256
+    ref = torch.cat([sample_clean("spiral", n, gen(0)).x, torch.zeros(n, dim - 2)], 1)
+    x = torch.randn(n, dim, generator=gen(1))
+    full = wasserstein2(x @ basis(dim).T, ref @ basis(dim).T)
+    split = (wasserstein2(x[:, :2], ref[:, :2]) ** 2 + x[:, 2:].square().sum(1).mean().item()) ** 0.5
+    assert abs(full - split) < 1e-4
+
+
+@pytest.mark.parametrize("dim", [2, 8, 512])
 def test_basis_is_fixed_and_orthogonal(dim):
     q = basis(dim)
     assert torch.equal(q, basis(dim))
     assert torch.allclose(q.T @ q, torch.eye(dim), atol=1e-5)
 
 
-def test_embedded_toy_lies_on_the_plane_and_is_corrupted_in_the_frame(gen):
-    """Clean samples are the 2-D toy in the plane with nothing off it; corrupted ones
-    are, in Q's frame, the zero-padded toy corrupted coordinate by coordinate."""
-    over = ["slug=test", "data.dim=16", "model.dim=16"]
-    clean = build_dataset(load("configs/toy.yaml", over))
-    plane, rest = split(clean.x, 16)
-    assert clean.x.shape == (10_000, 16)
-    assert torch.allclose(plane, sample_clean("checkerboard", 10_000, gen(42)).x, atol=1e-5)
-    assert rest.abs().max() < 1e-5
+def test_embedded_dataset_lies_on_the_plane_and_noise_keeps_its_shape():
+    """Clean samples are the 2-D toy in the plane, with nothing off it; uniform
+    noise is added in the frame, so within the plane it stays inside its box."""
+    var = ["data.dim=16", "model.dim=16"]
+    clean = build_dataset(load("configs/imf.yaml", ["slug=test", *var]))
+    gen = torch.Generator().manual_seed(42)
+    assert torch.allclose(frame(clean.x)[:, :2], sample_clean("spiral", len(clean), gen).x, atol=1e-5)
+    assert frame(clean.x)[:, 2:].abs().max() < 1e-5
 
-    obs = build_dataset(load("configs/toy.yaml", [*over, CORRUPT[1]]))
-    g = gen(42)
-    toy = sample_clean("checkerboard", 10_000, g)
-    expected = gaussian(replace(toy, x=F.pad(toy.x, (0, 14))), g, sigma=0.3, clean_frac=0.1)
-    assert torch.allclose(torch.cat(split(obs.x, 16), 1), expected.x, atol=1e-5)
-    assert torch.equal(obs.sigma, expected.sigma)
+    box = ["corruption={name: box_uniform_var, var_max: 1.0, clean_frac: 0.3333}"]
+    obs = build_dataset(load("configs/imf.yaml", ["slug=test", *var, *box]))
+    noise = frame(obs.x - clean.x)[obs.sigma > 0] / obs.sigma[obs.sigma > 0, None]
+    assert noise.abs().max() <= 3 ** 0.5 + 1e-3
+    assert abs(noise.std() - 1.0) < 0.02

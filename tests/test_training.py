@@ -12,7 +12,7 @@ import pytest
 import torch
 
 from src.config import load
-from src.metrics import energy_distance
+from src.metrics import wasserstein2
 from src.training import evaluate, load_run, reference, train
 
 pytestmark = pytest.mark.gpu
@@ -24,9 +24,8 @@ def tmp(tmp_path_factory):
     return tmp_path_factory.mktemp("runs")
 
 
-def run(tmp: Path, name: str, extra=()):
-    cfg = load("configs/toy.yaml", ["slug=test", f"out_root={tmp}/{name}", f"runs_dir={tmp}",
-                                    *FAST, *extra])
+def run(tmp: Path, name: str, extra=(), config="configs/imf.yaml"):
+    cfg = load(config, ["slug=test", f"out_root={tmp}/{name}", f"runs_dir={tmp}", *FAST, *extra])
     train(cfg)
     return cfg
 
@@ -48,10 +47,16 @@ def test_identical_runs_are_bitwise_reproducible(tmp, reference_run):
     assert len(reference_run) == 2 and metrics(tmp, "b") == reference_run
 
 
-def test_learns_the_checkerboard_in_one_step(reference_run):
-    ref = reference(load("configs/toy.yaml", ["slug=test"])).x
-    prior = energy_distance(torch.randn(ref.shape, generator=torch.Generator().manual_seed(6)), ref)
-    assert reference_run[-1]["energy_distance@1"] < 0.3 * prior, (reference_run[-1], prior)
+def test_learns_the_spiral_in_one_step(reference_run):
+    """One step moves the prior most of the way onto the spiral, in all dimensions."""
+    ref = reference(load("configs/imf.yaml", ["slug=test"])).x
+    prior = wasserstein2(torch.randn(ref.shape, generator=torch.Generator().manual_seed(6)), ref)
+    assert reference_run[-1]["wasserstein2_full@1"] < 0.5 * prior, (reference_run[-1], prior)
+
+
+def test_toy_run_writes_true_vs_generated_figure(tmp, reference_run):
+    cfg = load("configs/imf.yaml", ["slug=test", f"out_root={tmp}/a", f"runs_dir={tmp}", *FAST])
+    assert (Path(cfg.out_root) / cfg.slug / cfg.run_id / "true-vs-generated.png").stat().st_size > 0
 
 
 def test_interrupted_run_resumes_bitwise(tmp, reference_run, monkeypatch):
@@ -72,14 +77,20 @@ def test_interrupted_run_resumes_bitwise(tmp, reference_run, monkeypatch):
     assert evaluate(net, cfg, reference(cfg).to("cuda")) == reference_run[-1]
 
 
-@pytest.mark.parametrize("name, extra", [
-    ("corrupted", ["corruption={name: gaussian, sigma: 0.3, clean_frac: 0.1}"]),
-    ("clean-only", ["corruption={name: gaussian, sigma: 0.3, clean_frac: 0.1}", "data.keep_noisy=false"]),
-    ("bf16", ["train.precision=bf16"]),
-    ("embedded", ["data.dim=8", "model.dim=8"]),
+GAUSSIAN = "corruption={name: gaussian, sigma: 0.3, clean_frac: 0.75}"
+UNIFORM = "corruption={name: uniform, sigma: 0.3, clean_frac: 0.75}"
+
+
+@pytest.mark.parametrize("name, extra, config", [
+    ("gaussian", [GAUSSIAN], "configs/imf.yaml"),
+    ("clean-only", [GAUSSIAN, "data.keep_noisy=false"], "configs/imf.yaml"),
+    ("ambient-gaussian", [GAUSSIAN], "configs/ambient_imf.yaml"),
+    ("ambient-uniform", [UNIFORM], "configs/ambient_imf.yaml"),
+    ("bf16", ["train.precision=bf16"], "configs/imf.yaml"),
+    ("2-D", ["data.dim=2", "model.dim=2"], "configs/imf.yaml"),
 ])
-def test_arms_run(tmp, name, extra):
-    run(tmp, name, ["train.steps=300", "train.eval_every=300", *extra])
+def test_arms_run(tmp, name, extra, config):
+    run(tmp, name, ["train.steps=300", "train.eval_every=300", *extra], config)
     last = metrics(tmp, name)[-1]
     assert all(math.isfinite(m) for m in last.values())
-    assert ("off_plane_rms@1" in last) == (name == "embedded")
+    assert ("off_plane_rms@1" in last) == ("wasserstein2_full@1" in last) == (name != "2-D")

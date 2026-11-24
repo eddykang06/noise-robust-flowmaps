@@ -1,6 +1,9 @@
 """The training loop, shared by every objective.
 
-A run lives in `<out_root>/<slug>/<run_id>/` (resolved config and checkpoint).
+A run lives in `<out_root>/<slug>/<run_id>/` (resolved config, checkpoint and
+`true-vs-generated.png` after the last step). The spiral is observed in `data.dim`
+dimensions (src/embed.py) and scored in all of them, in its plane, and by the RMS of
+the coordinates off the plane, which clean samples have at zero.
 At each evaluation milestone the EMA network is sampled, scored against fresh
 clean samples, checkpointed, and one record is appended to
 `<runs_dir>/<slug>.jsonl`. Rerunning the same config resumes from the
@@ -12,7 +15,7 @@ import json
 import os
 import subprocess
 import time
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from functools import partial
 from pathlib import Path
 
@@ -22,10 +25,11 @@ import yaml
 from src.config import Config, kwargs
 from src.corrupt import CORRUPTIONS
 from src.data import Batch, batches
-from src.embed import PLANE, observe, split
+from src.embed import frame, observe, pad
 from src.metrics import METRICS
 from src.models import MODELS
 from src.objectives import OBJECTIVES
+from src.plots import save as save_figure
 from src.sampling import SAMPLERS
 from src.toy import sample_clean
 
@@ -33,44 +37,62 @@ REPO = Path(__file__).resolve().parents[1]
 DTYPES = {"fp32": torch.float32, "bf16": torch.bfloat16}
 
 
-def observed_dim(cfg: Config) -> int:
-    """`data.dim`, the dimension the toy is observed in (src/embed.py); 2 if unset."""
-    return cfg.data.get("dim", PLANE)
-
-
 def build_dataset(cfg: Config) -> Batch:
     """The fixed training set: depends only on the data, corruption and seed."""
     gen = torch.Generator().manual_seed(cfg.seed)
-    clean = sample_clean(cfg.data["name"], cfg.data["n"], gen)
-    corrupt = partial(CORRUPTIONS[cfg.corruption["name"]], gen=gen, **kwargs(cfg.corruption))
-    data = observe(clean, observed_dim(cfg), corrupt)
+    data = pad(sample_clean(cfg.data["name"], cfg.data["n"], gen), cfg.data["dim"])
+    data = observe(CORRUPTIONS[cfg.corruption["name"]](data, gen, **kwargs(cfg.corruption)))
     return data if cfg.data["keep_noisy"] else data[data.sigma == 0]
 
 
 def reference(cfg: Config) -> Batch:
     """Fresh clean samples, disjoint in randomness from the training set."""
     gen = torch.Generator().manual_seed(10_000 + cfg.seed)
-    clean = sample_clean(cfg.data["name"], cfg.metric["n_samples"], gen)
-    return observe(clean, observed_dim(cfg), corrupt=lambda batch: batch)
+    return observe(pad(sample_clean(cfg.data["name"], cfg.metric["n_samples"], gen), cfg.data["dim"]))
 
 
 @torch.no_grad()
-def evaluate(net, cfg: Config, ref: Batch) -> dict:
-    """Scores every sampler step count on the same seeded noise, without
-    touching the training RNG. The metric compares samples with the reference
-    in the data's plane; above 2-D, `off_plane_rms` is the RMS of the other
-    coordinates, which is 0 for clean data."""
-    name, metric, dim = cfg.metric["name"], METRICS[cfg.metric["name"]], observed_dim(cfg)
+def samples(net, cfg: Config, ref: Batch) -> dict:
+    """Samples for every sampler step count, from the same seeded noise and
+    without touching the training RNG."""
     gen = torch.Generator(ref.x.device).manual_seed(cfg.seed)
     eps = torch.randn(ref.x.shape, generator=gen, device=ref.x.device)
-    ref_plane, _ = split(ref.x, dim)
-    scores = {}
-    for steps in cfg.sampler["steps"]:
-        plane, rest = split(draw(net, cfg, eps, steps, ref.cond), dim)
-        scores[f"{name}@{steps}"] = metric(plane, ref_plane)
-        if rest is not None:
-            scores[f"off_plane_rms@{steps}"] = rest.square().mean().sqrt().item()
-    return scores
+    return {steps: draw(net, cfg, eps, steps, ref.cond) for steps in cfg.sampler["steps"]}
+
+
+def score(cfg: Config, generated: dict, ref: Batch) -> dict:
+    """The metric in the plane and, above 2-D, in all D dimensions (`<name>_full`, the
+    headline metric since 2026-11-20) and the per-coordinate RMS off the plane, for every
+    step count."""
+    name, plane = cfg.metric["name"], frame(ref.x)[:, :2]
+    out = {}
+    for steps, x in generated.items():
+        framed = frame(x)
+        out[f"{name}@{steps}"] = METRICS[name](framed[:, :2], plane)
+        if x.shape[1] > 2:
+            out[f"{name}_full@{steps}"] = METRICS[name](x, ref.x)
+            out[f"off_plane_rms@{steps}"] = framed[:, 2:].square().mean().sqrt().item()
+    return out
+
+
+def evaluate(net, cfg: Config, ref: Batch) -> dict:
+    """Scores the samples of every sampler step count against the reference."""
+    return score(cfg, samples(net, cfg, ref), ref)
+
+
+def figure_run(cfg: Config, data: Batch, ref: Batch, generated: dict) -> dict:
+    """What `src.plots` draws for one run, in the plane: its records so far and the
+    metric's floor, the score of a second, independent clean sample."""
+    runs_file = REPO / cfg.runs_dir / f"{cfg.slug}.jsonl"
+    records = [r for r in map(json.loads, runs_file.read_text().splitlines())
+               if r["run_id"] == cfg.run_id]
+    gen = torch.Generator().manual_seed(20_000 + cfg.seed)
+    other = sample_clean(cfg.data["name"], len(ref), gen)
+    plane = lambda x: frame(x)[:, :2]
+    floor = METRICS[cfg.metric["name"]](other.x, plane(ref.x))
+    return {"label": cfg.run_id, "data": replace(data, x=plane(data.x)), "true": plane(ref.x),
+            "generated": {steps: plane(x) for steps, x in generated.items()},
+            "records": records, "metric": cfg.metric["name"], "floor": floor}
 
 
 def draw(net, cfg: Config, eps, steps: int, y=None):
@@ -148,7 +170,8 @@ def train(cfg: Config):
             print(f"step {step} loss {loss.item():.4f} "
                   + " ".join(f"{k} {v.item():.4f}" for k, v in logs.items()), flush=True)
         if step % cfg.train["eval_every"] == 0 or step == cfg.train["steps"]:
-            metrics = evaluate(ema, cfg, ref)
+            generated = samples(ema, cfg, ref)
+            metrics = score(cfg, generated, ref)
             elapsed = time.time() - start
             torch.save({"net": net.state_dict(), "ema": ema.state_dict(), "opt": opt.state_dict(),
                         "sched": sched.state_dict(), "step": step, "elapsed": elapsed,
@@ -159,6 +182,8 @@ def train(cfg: Config):
             with open(runs_file, "a") as f:
                 f.write(json.dumps(record) + "\n")
             print(f"step {step} " + " ".join(f"{k} {v:.5f}" for k, v in metrics.items()), flush=True)
+            if step == cfg.train["steps"]:
+                save_figure([figure_run(cfg, data, ref, generated)], run_dir / "true-vs-generated.png")
 
 
 def load_run(run_dir: Path) -> tuple[Config, torch.nn.Module]:

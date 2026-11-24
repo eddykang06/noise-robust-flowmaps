@@ -1,13 +1,10 @@
-"""2-D toys observed in D dimensions, as in the Pixel MeanFlow toy (arXiv 2601.22158, Sec. 5).
+"""A 2-D toy observed in D dimensions, as in the Pixel MeanFlow toy (arXiv 2601.22158, Sec. 5):
+the data lie on the plane spanned by the first two columns of a fixed orthogonal matrix Q.
 
-The data lie on the plane spanned by the first two columns of a fixed orthogonal
-matrix Q. Working in Q's frame, a sample is padded with D - 2 zeros, corrupted, then
-rotated into observed coordinates; corrupting in the frame keeps non-Gaussian
-per-coordinate noise (e.g. uniform) the same shape within the plane. A network that
-is not given t, such as iMF's, must infer it from z_t: in 2-D it cannot, while in D
-dimensions the noise off the plane reveals it.
-
-With D = 2 nothing is padded or rotated, so the toys are unchanged.
+Exact iMF conditions its network on h = t - r only, so it must read t off z_t; in 2-D it
+cannot, in D dimensions the noise energy off the plane gives it away. Samples are
+corrupted before the rotation, in the frame where the plane is the first two
+coordinates, so per-coordinate noise (e.g. uniform) keeps its shape within the plane.
 """
 
 from dataclasses import replace
@@ -17,28 +14,24 @@ import torch.nn.functional as F
 
 from src.data import Batch
 
-PLANE = 2  # the toys' own dimension
-
 
 def basis(dim: int) -> torch.Tensor:
-    """Q: a fixed Haar-random orthogonal [dim, dim] matrix, the same for every run."""
+    """Q: a fixed Haar-random orthogonal [dim, dim] matrix, shared by every run."""
     gen = torch.Generator().manual_seed(0)
     q, r = torch.linalg.qr(torch.randn(dim, dim, generator=gen, dtype=torch.float64))
     return (q * r.diagonal().sign()).float()
 
 
-def observe(clean: Batch, dim: int, corrupt) -> Batch:
-    """Clean 2-D samples corrupted by `corrupt(batch)` and observed in `dim` dimensions."""
-    if dim == PLANE:
-        return corrupt(clean)
-    framed = corrupt(replace(clean, x=F.pad(clean.x, (0, dim - PLANE))))
-    return replace(framed, x=framed.x @ basis(dim).T)
+def pad(batch: Batch, dim: int) -> Batch:
+    """2-D samples as the first two coordinates of the frame; the rest are zero."""
+    return replace(batch, x=F.pad(batch.x, (0, dim - batch.x.shape[1])))
 
 
-def split(x: torch.Tensor, dim: int) -> tuple[torch.Tensor, torch.Tensor | None]:
-    """Samples observed in `dim` dimensions, in Q's frame: the plane `[n, 2]` and the
-    rest `[n, dim - 2]`. With dim = 2 the samples, of any shape, are returned whole."""
-    if dim == PLANE:
-        return x, None
-    x = x @ basis(dim).to(x)
-    return x[:, :PLANE], x[:, PLANE:]
+def observe(batch: Batch) -> Batch:
+    """Frame coordinates -> observed coordinates."""
+    return replace(batch, x=batch.x @ basis(batch.x.shape[1]).T)
+
+
+def frame(x: torch.Tensor) -> torch.Tensor:
+    """Observed coordinates -> frame coordinates: the plane, then the D - 2 others."""
+    return x @ basis(x.shape[1]).to(x)

@@ -27,18 +27,22 @@ Run all commands from the repository root.
 **Configure.** Each experiment is a YAML file in `configs/` that sets the data,
 corruption, model, objective, sampler, metric and training budget. Any value can be
 overridden on the command line as a dotted `key=value`, for example `train.steps=20000`.
-A 2-D toy can be observed in D dimensions, as in the Pixel MeanFlow toy, by setting
-`data.dim=D model.dim=D`: the toy then lies on a fixed random plane, and runs also report
-`off_plane_rms`, the RMS of the samples off that plane (`src/embed.py`).
+`configs/imf.yaml` trains iMF and `configs/ambient_imf.yaml` ambient iMF, on a two-armed
+spiral observed in 64 dimensions (the Pixel MeanFlow toy: the data lie on a fixed random
+plane, `src/embed.py`). Noise is added with a corruption override, for example
+`corruption="{name: gaussian, sigma: 1.0, clean_frac: 0.75}"` (Gaussian or uniform,
+`src/corrupt.py`). Runs report W2 in all dimensions (`wasserstein2_full`), W2 in the
+plane (`wasserstein2`) and the RMS of the samples off the plane (`off_plane_rms`).
 
 **Train.** Trains a model and evaluates it at fixed intervals. `slug` names the experiment.
 
 ```sh
-python -m scripts.train --config configs/toy.yaml slug=toy seed=42
+python -m scripts.train --config configs/ambient_imf.yaml slug=demo seed=42 \
+  corruption="{name: gaussian, sigma: 1.0, clean_frac: 0.75}"
 ```
 
 The run directory, `$NRFM_OUT/<slug>/<run_id>/`, is printed at the start and holds the
-config and checkpoint. Metrics are appended to `runs/<slug>.jsonl`. Rerunning the same
+config, checkpoint and a figure of true against generated samples. Metrics are appended to `runs/<slug>.jsonl`. Rerunning the same
 command resumes from the last checkpoint, and the same config and seed reproduce
 results exactly on the same hardware.
 
@@ -55,19 +59,28 @@ as `samples-<steps>step.pt`.
 python -m scripts.sample <run_dir> --n 10000 --steps 1 --seed 0
 ```
 
+**Plot.** Draws true against generated samples for one or more runs.
+
+```sh
+python -m scripts.plot <run_dir> [<run_dir> ...] --out runs.png
+```
+
+**Test.** `python -m pytest`; the GPU tests are skipped without CUDA.
+
 **On Slurm.** `jobs/train.sbatch` runs any command above as a single-GPU job in the
 `nrfm` env and writes job logs to `logs/`. Set `NRFM_OUT` before submitting (it defaults
 to O2 scratch space).
 
 ```sh
-sbatch --export=ALL,CMD="python -m scripts.train --config configs/toy.yaml slug=toy seed=42" jobs/train.sbatch
+sbatch --export=ALL,CMD="python -m scripts.train --config configs/imf.yaml slug=demo seed=42" jobs/train.sbatch
 ```
 
 ## Layout
 
 ```
-configs/   experiment configs
-src/       data, corruption, models, objectives, sampling, metrics, training loop
-scripts/   train, evaluate, sample
+configs/   iMF and ambient iMF on the spiral
+src/       spiral, embedding, corruption, models, objectives, sampling, metrics, training loop
+scripts/   train, evaluate, sample, plot
+tests/     pytest suite; tests/reference holds the upstream iMF reference outputs
 jobs/      Slurm job template
 ```

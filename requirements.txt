@@ -4,4 +4,6 @@
 torch==2.14.1+cu126
 numpy==2.4.6
 pyyaml==6.0.3
+scipy==1.17.1
+matplotlib==3.11.2
 pytest==9.2.0

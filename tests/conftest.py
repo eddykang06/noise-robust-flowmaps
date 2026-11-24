@@ -4,7 +4,7 @@ import tempfile
 import pytest
 import torch
 
-# configs/toy.yaml reads $NRFM_OUT; tests that train set out_root explicitly.
+# configs/imf.yaml reads $NRFM_OUT; tests that train set out_root explicitly.
 os.environ.setdefault("NRFM_OUT", tempfile.gettempdir())
 
 
