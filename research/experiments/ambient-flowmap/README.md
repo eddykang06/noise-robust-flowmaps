@@ -241,6 +241,16 @@ Five arms (brief), seed 42, 75% clean, one $\sigma$ per job (`sweep.sbatch`, `DI
   references) bitwise identical to b9ea442, run ids equal the existing $n = 100{,}000$ runs', CPU tests
   58/58. GPU check 60628326 (`consolidate-check.sbatch`, 50-step training per case, re-score, GPU arm
   tests; `--time=00:30:00`, otherwise the header above) queued; 60626861 cancelled as larger than needed.
+- **Real-data pipeline on main** (human, 2026-11-24): MNIST, ImageNet 256 latents, FID-type metrics
+  (c7ddd3e, pushed). CPU check 60639921 (`consolidate-check-cpu.sbatch`, OLD = main 0c1b13f,
+  `OLD_MODE=new`): spiral bitwise identical, CPU tests 65/65. CPU smoke 60641517
+  (`data-smoke-cpu.sbatch`, `data_smoke_cpu.py`; short partition, 4 CPUs, `--mem=6G
+  --time=01:00:00`, `--mail-type=BEGIN,END`; 10 min 49 s, peak 1.80 GB): MNIST classifier 98.87%;
+  MNIST reference vs itself FID 0 / P = R = 1, vs train digits FID 18.6, vs noise FID 2,157;
+  fake ImageNet VAE round trip PSNR 39.7 dB, Inception FID 0 vs itself, 563 vs noise; CPU tests 66/66.
+  Earlier attempts 60641096 (`NRFM_OUT` unset) and 60641323 (out of memory at 5 GB, VAE batch 64) failed.
+  GPU smoke 60639944 / 60639945 (`data-smoke.sbatch`, gpu,gpu_quad and gpu_requeue copies;
+  `--gres=gpu:1 --cpus-per-task=4 --mem=6G --time=01:30:00`) queued.
 - **Results page** for both sweeps (human, 2026-11-20): artifact "Ambient iMF Noise Sweep",
   figures from `figures.py` (all eight $\sigma$, both noise types, 64-D and in-plane $W_2$; since
   2026-11-20 also $\sigma = 1.0$ at $n = 10{,}000$ against $n = 100{,}000$, `fig_data_size`).
@@ -261,6 +271,9 @@ Current `sweep.sbatch` header (the fixed-σ jobs ran with `--mem=6G`):
 
 ### Standing decisions by the human
 
+- 2026-11-24: build the real-data loading pipeline on main (MNIST, ImageNet 256 as SD-VAE
+  latents, AFDB later); keep all labels; FID-type metrics plus baseline metrics; protein
+  settings to follow Ambient Protein Diffusion, decided by the human.
 - 2026-11-24: consolidate the code on main: spiral only (checkerboard removed), current
   pipeline included, behaviour verified unchanged; push straight to main.
 - 2026-11-23: the sweep moves to $n = 100{,}000$ training points (all eight $\sigma$); a single
