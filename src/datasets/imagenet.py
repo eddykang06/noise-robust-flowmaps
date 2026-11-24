@@ -25,7 +25,8 @@ from src.plots import image_grid
 ON_DEVICE = False
 SCALE = 0.18215  # SD-VAE latent scale
 VAE = "stabilityai/sd-vae-ft-ema"
-CHUNK = 4096
+CHUNK = 4096   # samples per chunk when caching a corrupted training set
+BATCH = 16     # images per VAE pass
 
 
 @cache
@@ -46,7 +47,7 @@ def center_crop(image: Image.Image, size: int = 256) -> np.ndarray:
 
 
 @torch.no_grad()
-def prepare(src: Path, split: str, batch_size: int = 64):
+def prepare(src: Path, split: str):
     """Encodes `src/<class folder>/<image>` (classes indexed in sorted folder order) into
     <root>/imagenet/{split}_latents.npy and {split}_labels.npy."""
     classes = sorted(p.name for p in src.iterdir() if p.is_dir())
@@ -55,8 +56,8 @@ def prepare(src: Path, split: str, batch_size: int = 64):
     out = root() / "imagenet"
     out.mkdir(parents=True, exist_ok=True)
     latents = np.lib.format.open_memmap(out / f"{split}_latents.npy", "w+", np.float32, (flips * len(files), 4, 32, 32))
-    for i in range(0, len(files), batch_size):
-        chunk = files[i:i + batch_size]
+    for i in range(0, len(files), BATCH):
+        chunk = files[i:i + BATCH]
         x = torch.from_numpy(np.stack([center_crop(Image.open(f)) for f, _ in chunk])).to(DEVICE)
         x = x.permute(0, 3, 1, 2).float() / 127.5 - 1
         for k in range(flips):
@@ -102,7 +103,7 @@ def reference(cfg: Config, n: int, gen: torch.Generator) -> Batch:
 
 @torch.no_grad()
 def to_images(x: torch.Tensor) -> torch.Tensor:
-    images = [vae().decode(z.to(DEVICE).float() / SCALE).sample for z in x.split(64)]
+    images = [vae().decode(z.to(DEVICE).float() / SCALE).sample for z in x.split(BATCH)]
     return ((torch.cat(images).clamp(-1, 1) + 1) * 127.5).round().to(torch.uint8)
 
 
