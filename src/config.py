@@ -10,9 +10,11 @@ import hashlib
 import json
 import os
 from dataclasses import asdict, dataclass
+from pathlib import Path
 
 import yaml
 
+REPO = Path(__file__).resolve().parents[1]
 PATHS = ("out_root", "runs_dir")
 
 

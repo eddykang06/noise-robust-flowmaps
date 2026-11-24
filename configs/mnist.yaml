@@ -1,0 +1,57 @@
+# iMF on MNIST digits (src/datasets/mnist.py), class-conditional. `slug` is set per run on
+# the command line. Needs `python -m scripts.prepare_data mnist`. Objective and optimizer as
+# configs/imf.yaml; sizes and budget are untuned first choices.
+seed: 42
+out_root: $NRFM_OUT       # run directories; scripts/train.sbatch sets NRFM_OUT
+runs_dir: runs            # <slug>.jsonl evaluation records, relative to the repo root
+
+data:
+  name: mnist
+  n: null                 # all 60,000 training digits; an integer takes a seeded subset
+  keep_noisy: true        # false drops corrupted samples (clean-only training)
+
+corruption:
+  name: none              # gaussian / uniform: noise of std `sigma` on all but a `clean_frac`
+                          # fraction (src/corrupt.py)
+
+model:
+  name: imfDiT_B_2
+  input_size: 32
+  in_channels: 1
+  num_classes: 10
+
+objective:
+  name: imf
+  P_mean: -0.4            # logit-normal (t, r) sampling
+  P_std: 1.0
+  data_proportion: 0.5    # share of each batch with r = t
+  cfg_beta: 1.0           # omega density ~ omega^-beta (guidance only)
+  class_dropout_prob: 0.1 # guidance only
+  norm_p: 0.0             # adaptive weight (loss + norm_eps)^norm_p; 0 = plain squared error,
+                          # which keeps the ambient target unbiased (iMF default: 1.0)
+  norm_eps: 0.01
+  guidance: true          # class-conditional, trained with classifier-free guidance
+
+sampler:
+  name: imf
+  steps: [1, 2]           # each step count is evaluated
+  omega: 1.0              # guidance scale at sampling; 1 = conditional, no guidance
+  t_min: 0.0
+  t_max: 1.0
+  batch: 1000             # noise vectors per forward pass
+
+metric:
+  name: fid               # FID, precision/recall and class score on the metric classifier's features
+  features: mnist
+  n_samples: 10000        # the whole test split
+
+train:
+  steps: 50000
+  batch_size: 256
+  lr: 1.0e-4
+  adam_b2: 0.95
+  warmup_steps: 1000
+  ema: 0.9999
+  precision: fp32
+  log_every: 1000
+  eval_every: 10000

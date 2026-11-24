@@ -8,7 +8,7 @@ from src.corrupt import box_uniform_var, gaussian, gaussian_uniform_var, uniform
 from src.data import Batch
 from src.embed import basis, frame
 from src.metrics import wasserstein2
-from src.toy import sample_clean, spiral
+from src.datasets.spiral import sample_clean, spiral
 from src.training import build_dataset, reference
 
 CORRUPT = ["slug=test", "corruption={name: gaussian, sigma: 0.3, clean_frac: 0.1}"]
@@ -43,7 +43,7 @@ def test_clean_only_keeps_exactly_the_clean_samples():
 
 @pytest.mark.parametrize("corrupt", [gaussian, uniform])
 def test_fixed_sigma_corruptions(gen, corrupt):
-    clean = sample_clean("spiral", 200_000, gen(1))
+    clean = sample_clean(200_000, gen(1))
     obs = corrupt(clean, gen(2), sigma=0.3, clean_frac=0.1)
     noisy = obs.sigma > 0
     noise = (obs.x - clean.x)[noisy]
@@ -57,7 +57,7 @@ def test_fixed_sigma_corruptions(gen, corrupt):
 
 @pytest.mark.parametrize("corrupt", [gaussian_uniform_var, box_uniform_var])
 def test_per_sample_variance_corruptions(gen, corrupt):
-    clean = sample_clean("spiral", 200_000, gen(1))
+    clean = sample_clean(200_000, gen(1))
     obs = corrupt(clean, gen(2), var_max=10.0, clean_frac=1 / 3)
     noisy = obs.sigma > 0
     var = obs.sigma[noisy] ** 2
@@ -86,7 +86,7 @@ def test_full_wasserstein2_splits_into_plane_and_off_plane(gen):
     """Against data on the plane, the off-plane cost of a pair does not depend on the
     matching, so W2 in D dimensions is sqrt(W2 in the plane^2 + mean squared distance off it)."""
     dim, n = 8, 256
-    ref = torch.cat([sample_clean("spiral", n, gen(0)).x, torch.zeros(n, dim - 2)], 1)
+    ref = torch.cat([sample_clean(n, gen(0)).x, torch.zeros(n, dim - 2)], 1)
     x = torch.randn(n, dim, generator=gen(1))
     full = wasserstein2(x @ basis(dim).T, ref @ basis(dim).T)
     split = (wasserstein2(x[:, :2], ref[:, :2]) ** 2 + x[:, 2:].square().sum(1).mean().item()) ** 0.5
@@ -106,7 +106,7 @@ def test_embedded_dataset_lies_on_the_plane_and_noise_keeps_its_shape():
     var = ["data.dim=16", "model.dim=16"]
     clean = build_dataset(load("configs/imf.yaml", ["slug=test", *var]))
     gen = torch.Generator().manual_seed(42)
-    assert torch.allclose(frame(clean.x)[:, :2], sample_clean("spiral", len(clean), gen).x, atol=1e-5)
+    assert torch.allclose(frame(clean.x)[:, :2], sample_clean(len(clean), gen).x, atol=1e-5)
     assert frame(clean.x)[:, 2:].abs().max() < 1e-5
 
     box = ["corruption={name: box_uniform_var, var_max: 1.0, clean_frac: 0.3333}"]

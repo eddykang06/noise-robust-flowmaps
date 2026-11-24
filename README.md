@@ -18,7 +18,19 @@ cd noise-robust-flowmaps
 conda create -n nrfm python=3.11 && conda activate nrfm
 pip install -r requirements.txt
 export NRFM_OUT=/path/to/outputs        # where runs are saved
+export NRFM_DATA=/path/to/data          # prepared datasets and metric networks (default: data/)
 ```
+
+**Data.** The spiral is generated on the fly. Prepare the other datasets once:
+
+```sh
+python -m scripts.prepare_data mnist                        # digits + the MNIST metric classifier
+python -m scripts.prepare_data inception                    # FID Inception network
+python -m scripts.prepare_data imagenet --src <train dir> --split train   # SD-VAE latents
+python -m scripts.prepare_data imagenet --src <val dir> --split val
+```
+
+ImageNet is ILSVRC-2012, read as one folder of images per class; preparing it needs a GPU.
 
 ## Usage
 
@@ -27,12 +39,15 @@ Run all commands from the repository root.
 **Configure.** Each experiment is a YAML file in `configs/` that sets the data,
 corruption, model, objective, sampler, metric and training budget. Any value can be
 overridden on the command line as a dotted `key=value`, for example `train.steps=20000`.
-`configs/imf.yaml` trains iMF and `configs/ambient_imf.yaml` ambient iMF, on a two-armed
+`configs/imf.yaml` trains iMF and `configs/ambient_imf.yaml` ambient iMF on a two-armed
 spiral observed in 64 dimensions (the Pixel MeanFlow toy: the data lie on a fixed random
-plane, `src/embed.py`). Noise is added with a corruption override, for example
-`corruption="{name: gaussian, sigma: 1.0, clean_frac: 0.75}"` (Gaussian or uniform,
-`src/corrupt.py`). Runs report W2 in all dimensions (`wasserstein2_full`), W2 in the
-plane (`wasserstein2`) and the RMS of the samples off the plane (`off_plane_rms`).
+plane, `src/embed.py`); `configs/mnist.yaml` and `configs/imagenet.yaml` train
+class-conditional iMF on MNIST and on ImageNet 256 latents. Noise is added with a corruption
+override, for example `corruption="{name: gaussian, sigma: 1.0, clean_frac: 0.75}"`
+(Gaussian or uniform, `src/corrupt.py`); each sample keeps one fixed noise draw. Spiral runs
+report W2 in all dimensions (`wasserstein2_full`), in the plane (`wasserstein2`) and the RMS
+off the plane (`off_plane_rms`); image runs report FID, precision, recall and the Inception
+score (`src/metrics.py`).
 
 **Train.** Trains a model and evaluates it at fixed intervals. `slug` names the experiment.
 
@@ -79,7 +94,7 @@ sbatch --export=ALL,CMD="python -m scripts.train --config configs/imf.yaml slug=
 
 ```
 configs/   iMF and ambient iMF on the spiral
-src/       spiral, embedding, corruption, models, objectives, sampling, metrics, training loop
-scripts/   train, evaluate, sample, plot, and the Slurm job template
+src/       datasets, corruption, models, objectives, sampling, metrics, training loop
+scripts/   train, evaluate, sample, plot, prepare data, and the Slurm job template
 tests/     pytest suite; tests/reference holds the upstream iMF reference outputs
 ```

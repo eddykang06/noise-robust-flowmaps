@@ -1,4 +1,5 @@
-"""True vs generated figures for the toys, drawn in the plane of the data (src/embed.py).
+"""True vs generated figures: for the spiral in the plane of the data (src/embed.py), for
+images as a grid (`image_grid`).
 
 One row per run: the training data (noisy samples in orange), the true
 distribution (fresh clean samples), the generated samples at each sampler step
@@ -50,4 +51,18 @@ def save(runs: list[dict], out):
         row(axes_row, run)
     fig.tight_layout()
     fig.savefig(out, dpi=120)
+    plt.close(fig)
+
+
+def image_grid(true, generated: dict, path):
+    """uint8 images `[B, 3, H, W]`: a row of true images, then one row per sampler step count."""
+    rows = {"true": true, **{f"{steps}-step" if steps == 1 else f"{steps}-steps": x for steps, x in generated.items()}}
+    fig, axes = plt.subplots(len(rows), len(true), figsize=(1.2 * len(true), 1.3 * len(rows)), squeeze=False)
+    for ax_row, (label, images) in zip(axes, rows.items()):
+        for ax, image in zip(ax_row, images.cpu()):
+            ax.imshow(image.permute(1, 2, 0).numpy())
+            ax.set(xticks=[], yticks=[])
+        ax_row[0].set_ylabel(label, fontsize=8)
+    fig.tight_layout()
+    fig.savefig(path, dpi=120)
     plt.close(fig)

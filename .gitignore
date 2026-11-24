@@ -4,6 +4,7 @@ logs/*
 !logs/.gitkeep
 *.pt
 *.npz
+/data/
 .venv/
 .pytest_cache/
 .DS_Store
