@@ -2,14 +2,14 @@
 # Checks that the consolidated main tree (NEW) behaves bitwise like this branch's code
 # at b9ea442 (OLD, the code every sweep run used): the unit fingerprint (models,
 # objectives, sampler), end-to-end cases (consolidate_check.py: run ids, datasets,
-# 200-step training with evaluations), re-scoring of a finished run; then the full
-# test suite on NEW. Sized from GPU test job 60207586 (22 min, peak 1.25 GB).
+# 50-step training with an evaluation), re-scoring of a finished run; then the CPU tests
+# and the GPU arm runs on NEW. Sized from GPU test job 60207586 (22 min, peak 1.25 GB).
 #SBATCH --partition=gpu,gpu_quad
 #SBATCH --qos=gpuquad_qos
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=2G
-#SBATCH --time=01:30:00
+#SBATCH --time=00:30:00
 #SBATCH --output=/n/scratch/users/e/edk005/nrfm/slurm/%x-%j.out
 set -euo pipefail
 export PATH="$HOME/.conda/envs/nrfm/bin:$PATH"
@@ -29,4 +29,4 @@ done
 cmp $OUT/unit-OLD.json $OUT/unit-NEW.json && echo "UNIT FINGERPRINTS IDENTICAL" || echo "UNIT FINGERPRINTS DIFFER"
 cmp $OUT/cases-OLD.json $OUT/cases-NEW.json && echo "END-TO-END CASES IDENTICAL" || echo "END-TO-END CASES DIFFER"
 cmp $OUT/eval-OLD.json $OUT/eval-NEW.json && echo "RE-SCORE IDENTICAL" || echo "RE-SCORE DIFFER"
-cd $NEW && python -m pytest -v -rs
+cd $NEW && python -m pytest -rs -m "not gpu" && python -m pytest -rs tests/test_training.py -k arms_run

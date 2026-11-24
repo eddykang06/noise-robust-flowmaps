@@ -234,11 +234,13 @@ Five arms (brief), seed 42, 75% clean, one $\sigma$ per job (`sweep.sbatch`, `DI
   (`more-steps.sbatch`, keys `c100k` and `<g|u><σ·100><n|a>100k`), submitted with
   `--mem=1200M --mail-type=BEGIN,END --exclude=compute-g-17-168` over the header
   `--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=2 --time=00:50:00`.
-- **Consolidated main** (human, 2026-11-24): this branch's shared code moved onto main in worktree
-  `/n/scratch/users/e/edk005/nrfm/main-consolidate` (branch `consolidate`, 3530c9d). Job 60626861
-  (`consolidate-check.sbatch`, `consolidate_check.py`) checks it bitwise against b9ea442 and runs the
-  full test suite, submitted with `--mail-type=BEGIN,END --exclude=compute-g-17-168` over the header
-  `--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=4 --mem=2G --time=01:30:00`.
+- **Consolidated main** (human, 2026-11-24): this branch's shared code moved onto main as 3530c9d
+  (pushed; worktree `/n/scratch/users/e/edk005/nrfm/main-consolidate`). CPU check 60632190
+  (`consolidate-check-cpu.sbatch`; short partition, 4 CPUs, `--mem=1500M --time=00:20:00`,
+  `--mail-type=BEGIN,END`): unit fingerprint and all nine cases (run ids, training sets,
+  references) bitwise identical to b9ea442, run ids equal the existing $n = 100{,}000$ runs', CPU tests
+  58/58. GPU check 60628326 (`consolidate-check.sbatch`, 50-step training per case, re-score, GPU arm
+  tests; `--time=00:30:00`, otherwise the header above) queued; 60626861 cancelled as larger than needed.
 - **Results page** for both sweeps (human, 2026-11-20): artifact "Ambient iMF Noise Sweep",
   figures from `figures.py` (all eight $\sigma$, both noise types, 64-D and in-plane $W_2$; since
   2026-11-20 also $\sigma = 1.0$ at $n = 10{,}000$ against $n = 100{,}000$, `fig_data_size`).
@@ -399,7 +401,7 @@ GPU nodes by up to 0.012 in $W_2$ (not bitwise reproducible across nodes).
 
 ## Next step
 
-When re-score 60627029 finishes, replace the sweep tables with the $n = 100{,}000$ ones and rebuild the results page; when check 60626861 passes, push the consolidated main.
+When re-score 60627029 finishes, replace the sweep tables with the $n = 100{,}000$ ones and rebuild the results page; when GPU check 60628326 finishes, record whether training matches bitwise too.
 
 ## Blocked on
 

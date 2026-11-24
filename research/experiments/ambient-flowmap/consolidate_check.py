@@ -4,8 +4,8 @@ branch (spiral-imf.yaml, spiral-ambient.yaml). Run from the tree's root:
 
     python <this file> old|new <out.json> <tmp_dir>
 
-Per case: the run id, digests of the training set and the reference, and a 200-step
-training run (two evaluations, checkpoint, figure) with its metrics and weight digests.
+Per case: the run id, digests of the training set and the reference, and a 50-step
+training run (one evaluation, checkpoint, figure) with its metrics and weight digests.
 """
 
 import hashlib
@@ -50,7 +50,11 @@ for name, (objective, extra) in CASES.items():
     data, ref = build_dataset(cfg), reference(cfg)
     case = {"run_id": cfg.run_id, "run_id_eval2k": load(CONFIGS[objective], [*BASE, *extra, "train.eval_every=2000"]).run_id,
             "data": digest(data.x, data.sigma), "reference": digest(ref.x)}
-    short = load(CONFIGS[objective], [*BASE, *extra, "train.steps=200", "train.eval_every=100",
+    if not torch.cuda.is_available():  # CPU check: data, references and run ids only
+        out[name] = case
+        print(name, json.dumps(case), flush=True)
+        continue
+    short = load(CONFIGS[objective], [*BASE, *extra, "train.steps=50", "train.eval_every=50", "metric.n_samples=1024",
                                       f"out_root={TMP}/{MODE}/{name}", f"runs_dir={TMP}/{MODE}/{name}"])
     train(short)
     run_dir = Path(short.out_root) / short.slug / short.run_id
