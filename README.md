@@ -67,12 +67,12 @@ python -m scripts.plot <run_dir> [<run_dir> ...] --out runs.png
 
 **Test.** `python -m pytest`; the GPU tests are skipped without CUDA.
 
-**On Slurm.** `jobs/train.sbatch` runs any command above as a single-GPU job in the
+**On Slurm.** `scripts/train.sbatch` runs any command above as a single-GPU job in the
 `nrfm` env and writes job logs to `logs/`. Set `NRFM_OUT` before submitting (it defaults
 to O2 scratch space).
 
 ```sh
-sbatch --export=ALL,CMD="python -m scripts.train --config configs/imf.yaml slug=demo seed=42" jobs/train.sbatch
+sbatch --export=ALL,CMD="python -m scripts.train --config configs/imf.yaml slug=demo seed=42" scripts/train.sbatch
 ```
 
 ## Layout
@@ -80,7 +80,6 @@ sbatch --export=ALL,CMD="python -m scripts.train --config configs/imf.yaml slug=
 ```
 configs/   iMF and ambient iMF on the spiral
 src/       spiral, embedding, corruption, models, objectives, sampling, metrics, training loop
-scripts/   train, evaluate, sample, plot
+scripts/   train, evaluate, sample, plot, and the Slurm job template
 tests/     pytest suite; tests/reference holds the upstream iMF reference outputs
-jobs/      Slurm job template
 ```

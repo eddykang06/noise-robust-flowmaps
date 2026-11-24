@@ -5,7 +5,7 @@
 # (github.com/Lyy-iiis/imeanflow: configs/default.py, configs/train_config.yml),
 # except norm_p; values marked "toy" are this repo's choices. Every budget is explicit.
 seed: 42
-out_root: $NRFM_OUT       # run directories; jobs/train.sbatch sets NRFM_OUT
+out_root: $NRFM_OUT       # run directories; scripts/train.sbatch sets NRFM_OUT
 runs_dir: runs            # <slug>.jsonl evaluation records, relative to the repo root
 
 data:
