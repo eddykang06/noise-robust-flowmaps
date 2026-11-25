@@ -261,7 +261,7 @@ Five arms (brief), seed 42, 75% clean, one $\sigma$ per job (`sweep.sbatch`, `DI
   blocks, activations held through the JVP) does not fit one GPU; the iMF paper splits that batch
   across devices. Memory probe 60706992 (`mem-probe.sbatch`, `mem_probe.py`; one fp32 step at batch
   32–256, MNIST patch 2 and 4, ImageNet patch 2; `--cpus-per-task=2 --mem=3G --time=00:20:00`,
-  otherwise the header above; NVIDIA 44 GB, 1 min): peak GPU memory per step, MNIST patch 4 at batch
+  otherwise the header above; Quadro RTX 8000, 44 GiB, 1 min): peak GPU memory per step, MNIST patch 4 at batch
   32 / 64 / 128 = 9.1 / 17.2 / 33.9 GiB (256 out of memory; patch 2 out of memory from 128), ImageNet
   patch 2 at batch 16 / 32 = 15.0 / 29.6 GiB (64 out of memory). Main's configs set to MNIST patch 4,
   batch 64 (fits 24 GB) and ImageNet batch 32 (needs 40 GB or more); 6147a1b, not yet pushed. GPU smoke
