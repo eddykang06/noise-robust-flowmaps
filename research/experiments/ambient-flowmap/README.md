@@ -269,9 +269,8 @@ Five arms (brief), seed 42, 75% clean, one $\sigma$ per job (`sweep.sbatch`, `DI
   steps and fake ImageNet 50 steps train and score, tests 77/77. MNIST runs at about 1.2 s per step at
   batch 64 (B/2), so the config's 50,000 steps would take about 17 h. Its 2,000-step EMA samples are
   noise (FID 2,701, accuracy 10%): EMA 0.9999 still holds 82% of the initial weights at 2,000 steps, so
-  the smoke cannot show learning. Raw-weight check 60712569 (`raw-net-check.sbatch`,
-  `raw_net_check.py`; `--cpus-per-task=2 --mem=2G --time=00:15:00`, otherwise the header above) scores
-  the same checkpoint's non-EMA weights.
+  the smoke cannot show learning. Not needed (human, 2026-11-25: only the data and training pipelines
+  have to work for now, not MNIST quality), so raw-weight check 60712569 was cancelled.
   ImageNet waits on the human's Hugging Face access (`ILSVRC/imagenet-1k`). ImageNet latents are also
   256 tokens at patch 2, so B/2 at batch 256 needs a larger GPU than 24 GB.
   Earlier attempts 60641096 (`NRFM_OUT` unset) and 60641323 (out of memory at 5 GB, VAE batch 64) failed.
@@ -463,7 +462,7 @@ GPU nodes by up to 0.012 in $W_2$ (not bitwise reproducible across nodes).
 
 ## Next step
 
-When raw-weight check 60712569 finishes, record whether 2,000 MNIST steps learn digits; full-batch ImageNet (256) needs several GPUs, which main does not support yet.
+Download and prepare ImageNet once the human has Hugging Face access; full-batch ImageNet (256) needs several GPUs, which main does not support yet.
 
 ## Blocked on
 
