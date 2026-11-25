@@ -397,12 +397,12 @@ steps; clean iMF: 1.166 / 0.639 / 0.374.
 | 0.75 | 1.124 / 1.314 / 1.990 | 1.030 / 0.558 / 0.395 | 1.053 / 0.540 / 0.392 | 1.275 / 1.416 / 1.862 |
 | 1.0 | 1.841 / 2.508 / 3.657 | 1.146 / 0.661 / 0.406 | 1.102 / 0.601 / 0.405 | 2.339 / 2.879 / 3.650 |
 
-At 8 steps ambient iMF is within 0.03 of clean iMF at every $\sigma$ for both noise types (0.378–0.406
+At 8 steps ambient iMF is within 0.035 of clean iMF at every $\sigma$ for both noise types (0.378–0.406
 against 0.374), while standard iMF degrades steadily from $\sigma = 0.1$ (Gaussian 0.417 at 0.1, 0.880 at 0.5,
-3.657 at 1.0; uniform similar). At 2 steps the two are within about 0.1 up to $\sigma = 0.33$ and part from
+3.657 at 1.0; uniform similar). At 2 steps the two are within 0.07 up to $\sigma = 0.33$ except Gaussian 0.2 (standard 0.782, ambient 0.603), and part from
 $\sigma = 0.5$. At 1 step neither is consistently better below $\sigma = 0.75$ (differences up to 0.2 either
 way, e.g. ambient worse at $\sigma = 0.05$–$0.1$); all 1-step values sit near clean iMF's weak 1.17. In the plane
-at 8 steps ambient stays at 0.10–0.14 at every $\sigma$; standard iMF rises from 0.11 to 0.46–0.50.
+at 8 steps ambient stays at 0.10–0.15 at every $\sigma$; standard iMF rises from 0.11 to 0.46–0.50.
 Seed 42 only: signals, not results.
 
 **$\sigma = 1.0$, $n = 100{,}000$** (10× the sweep's training set, 75% clean), $D = 64$, 100k steps,
