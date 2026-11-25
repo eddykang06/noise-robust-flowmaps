@@ -234,6 +234,7 @@ Five arms (brief), seed 42, 75% clean, one $\sigma$ per job (`sweep.sbatch`, `DI
   (`more-steps.sbatch`, keys `c100k` and `<g|u><σ·100><n|a>100k`), submitted with
   `--mem=1200M --mail-type=BEGIN,END --exclude=compute-g-17-168` over the header
   `--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=2 --time=00:50:00`.
+  Completed in 28 min (duplicate 60636214 on gpu_requeue cancelled when it started).
 - **Consolidated main** (human, 2026-11-24): this branch's shared code moved onto main as 3530c9d
   (pushed; worktree `/n/scratch/users/e/edk005/nrfm/main-consolidate`). CPU check 60632190
   (`consolidate-check-cpu.sbatch`; short partition, 4 CPUs, `--mem=1500M --time=00:20:00`,
@@ -248,6 +249,13 @@ Five arms (brief), seed 42, 75% clean, one $\sigma$ per job (`sweep.sbatch`, `DI
   --time=01:00:00`, `--mail-type=BEGIN,END`; 10 min 49 s, peak 1.80 GB): MNIST classifier 98.87%;
   MNIST reference vs itself FID 0 / P = R = 1, vs train digits FID 18.6, vs noise FID 2,157;
   fake ImageNet VAE round trip PSNR 39.7 dB, Inception FID 0 vs itself, 563 vs noise; CPU tests 66/66.
+  GPU smoke 60639945 (`data-smoke.sbatch`, Quadro RTX 6000, 24 GB) failed: MNIST iMF (imfDiT_B_2,
+  patch 2, 256 tokens, batch 256, fp32) ran out of GPU memory in the first step. Fix on main's
+  worktree, not yet pushed: `configs/mnist.yaml` patch size 4 (64 tokens; 8c8de02). Resubmitted as
+  60704833 with `--mem=3G` (1.5× the CPU smoke peak), otherwise the header of 60639945
+  (`--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=4 --time=01:30:00`).
+  ImageNet waits on the human's Hugging Face access (`ILSVRC/imagenet-1k`). ImageNet latents are also
+  256 tokens at patch 2, so B/2 at batch 256 needs a larger GPU than 24 GB.
   Earlier attempts 60641096 (`NRFM_OUT` unset) and 60641323 (out of memory at 5 GB, VAE batch 64) failed.
   GPU smoke 60639944 / 60639945 (`data-smoke.sbatch`, gpu,gpu_quad and gpu_requeue copies;
   `--gres=gpu:1 --cpus-per-task=4 --mem=6G --time=01:30:00`) queued.
@@ -374,6 +382,29 @@ against clean iMF's 1.148 and 0.623 (at $n = 10{,}000$, another GPU type) and na
 (60256817, $n = 10{,}000$). Naive iMF's 1-step value falls through the whole run (4.43 at 30k, 2.53 at
 100k). The larger batch is worse than batch 1024 throughout after 24k.
 
+**Fixed-σ sweep at $n = 100{,}000$**, 75% clean, $D = 64$, 100k steps, seed 42 (60555244–74 and the
+$\sigma = 1.0$ runs below; all 33 re-scored on one node by 60627029). $W_2^{64\text{D}}$ at $k = 1\,/\,2\,/\,8$
+steps; clean iMF: 1.166 / 0.639 / 0.374.
+
+| $\sigma$ | iMF, Gaussian | ambient iMF, Gaussian | ambient iMF, uniform | iMF, uniform |
+|---|---|---|---|---|
+| 0.05 | 1.130 / 0.639 / 0.391 | 1.206 / 0.690 / 0.382 | 1.161 / 0.657 / 0.378 | 1.123 / 0.631 / 0.390 |
+| 0.1 | 0.999 / 0.572 / 0.417 | 1.087 / 0.605 / 0.387 | 1.074 / 0.595 / 0.391 | 1.085 / 0.658 / 0.414 |
+| 0.2 | 1.282 / 0.782 / 0.459 | 1.079 / 0.603 / 0.385 | 1.021 / 0.579 / 0.396 | 1.037 / 0.593 / 0.461 |
+| 0.25 | 1.095 / 0.632 / 0.489 | 1.041 / 0.613 / 0.387 | 1.012 / 0.621 / 0.397 | 1.040 / 0.592 / 0.488 |
+| 0.33 | 0.997 / 0.585 / 0.555 | 0.986 / 0.572 / 0.388 | 0.977 / 0.565 / 0.390 | 1.086 / 0.597 / 0.559 |
+| 0.5 | 0.919 / 0.643 / 0.880 | 1.009 / 0.551 / 0.378 | 1.017 / 0.541 / 0.383 | 0.912 / 0.676 / 0.927 |
+| 0.75 | 1.124 / 1.314 / 1.990 | 1.030 / 0.558 / 0.395 | 1.053 / 0.540 / 0.392 | 1.275 / 1.416 / 1.862 |
+| 1.0 | 1.841 / 2.508 / 3.657 | 1.146 / 0.661 / 0.406 | 1.102 / 0.601 / 0.405 | 2.339 / 2.879 / 3.650 |
+
+At 8 steps ambient iMF is within 0.03 of clean iMF at every $\sigma$ for both noise types (0.378–0.406
+against 0.374), while standard iMF degrades steadily from $\sigma = 0.1$ (Gaussian 0.417 at 0.1, 0.880 at 0.5,
+3.657 at 1.0; uniform similar). At 2 steps the two are within about 0.1 up to $\sigma = 0.33$ and part from
+$\sigma = 0.5$. At 1 step neither is consistently better below $\sigma = 0.75$ (differences up to 0.2 either
+way, e.g. ambient worse at $\sigma = 0.05$–$0.1$); all 1-step values sit near clean iMF's weak 1.17. In the plane
+at 8 steps ambient stays at 0.10–0.14 at every $\sigma$; standard iMF rises from 0.11 to 0.46–0.50.
+Seed 42 only: signals, not results.
+
 **$\sigma = 1.0$, $n = 100{,}000$** (10× the sweep's training set, 75% clean), $D = 64$, 100k steps,
 seed 42 (60291354, 60291357, 60274565, 60313028, 60313029; all re-scored on one node by 60321685).
 $W_2^{64\text{D}}$ (in-plane $W_2$) at $k$ steps:
@@ -414,7 +445,7 @@ GPU nodes by up to 0.012 in $W_2$ (not bitwise reproducible across nodes).
 
 ## Next step
 
-When re-score 60627029 finishes, replace the sweep tables with the $n = 100{,}000$ ones and rebuild the results page; when GPU check 60628326 finishes, record whether training matches bitwise too.
+Rebuild the results page with the $n = 100{,}000$ σ sweep; when GPU check 60636197 (duplicate of 60628326, which was cancelled when it started) and smoke 60704833 finish, record them and push the MNIST fix to main.
 
 ## Blocked on
 

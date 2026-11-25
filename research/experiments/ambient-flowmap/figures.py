@@ -74,6 +74,24 @@ SETS["sigma-1.0-n100k"] = {
                             ("ambient_imf-s42-152f4102", "g100a100k"), ("ambient_imf-s42-e6c7074c", "u100a100k"),
                             ("imf-s42-8017d5d9", "u100n100k")])),
     "jobs": ["60321685"], "metric": FULL, "colors": HUES}
+# The full sweep at n = 100,000 (human, 2026-11-23): trained by 60555244-74 (sigma < 1.0) and the
+# sigma = 1.0 runs above, all 33 re-scored together by 60627029; runs in key order g-n, g-a, u-a, u-n.
+CLEAN_100K = "imf-s42-24d83765"
+SWEEP_100K = {"0.05": ["imf-s42-0f7e48b1", "ambient_imf-s42-34da9872", "ambient_imf-s42-d1cdc829", "imf-s42-38aa4ea3"],
+              "0.1": ["imf-s42-14e70b15", "ambient_imf-s42-609cbe4f", "ambient_imf-s42-44d18203", "imf-s42-b8a14256"],
+              "0.2": ["imf-s42-a9734644", "ambient_imf-s42-52e66e16", "ambient_imf-s42-5219a951", "imf-s42-767d9a26"],
+              "0.25": ["imf-s42-a5631d21", "ambient_imf-s42-55ca106f", "ambient_imf-s42-7fbfc24c", "imf-s42-def224d4"],
+              "0.33": ["imf-s42-62f8a4b6", "ambient_imf-s42-0d76f327", "ambient_imf-s42-d36b6c72", "imf-s42-d44145ce"],
+              "0.5": ["imf-s42-d7c1adf5", "ambient_imf-s42-80fb0c50", "ambient_imf-s42-c51077ed", "imf-s42-c3c1c71d"],
+              "0.75": ["imf-s42-e5b90a78", "ambient_imf-s42-773933b3", "ambient_imf-s42-60a5cfa4", "imf-s42-79fe369b"],
+              "1.0": ["imf-s42-0d807dc0", "ambient_imf-s42-152f4102", "ambient_imf-s42-e6c7074c", "imf-s42-8017d5d9"]}
+for sigma, runs in SWEEP_100K.items():
+    tag = f"{round(float(sigma) * 100):02d}"
+    keys = [f"{n}{tag}{m}100k" for n, m in ("gn", "ga", "ua", "un")]
+    SETS[f"sigma-{sigma}-n100k"] = {
+        "title": f"Five arms, 75% clean, sigma = {sigma}, n = 100,000",
+        "runs": dict(zip(ARMS, [(CLEAN_100K, "c100k"), *zip(runs, keys)])),
+        "jobs": ["60627029"], "metric": FULL, "colors": HUES}
 
 plt.rcParams.update({
     "font.size": 10, "axes.titlesize": 11, "axes.titleweight": "bold", "axes.titlelocation": "left",
@@ -147,9 +165,10 @@ def fig_samples(name, spec, evals, samples, out, lim=2.3):
     plt.close(fig)
 
 
-def sweep():
-    """Metrics and samples of every arm at every sigma of the fixed-sigma sweeps."""
-    return {sigma: load(SETS[f"sigma-{sigma}"]) for sigma in SWEEP}
+def sweep(suffix=""):
+    """Metrics and samples of every arm at every sigma of a fixed-sigma sweep (n = 10,000, or
+    n = 100,000 with suffix "-n100k")."""
+    return {sigma: load(SETS[f"sigma-{sigma}{suffix}"]) for sigma in (SWEEP_100K if suffix else SWEEP)}
 
 
 def title(k):
@@ -468,6 +487,48 @@ def fig_n100k_pair(out, noise, steps=(1, 2, 3, 4, 8), sample_steps=(1, 2, 4, 8))
         plt.close(fig)
 
 
+def fig_n100k_sweep(out, sets, noise, steps=(1, 2, 8), sigmas=("0.1", "0.25", "0.5", "0.75", "1.0"), step=8):
+    """The n = 100,000 sweep for one noise type: standard against ambient iMF, W2 in 64-D against
+    sigma (one panel per step count, clean-data iMF dashed), and samples at `step` steps for a few sigma."""
+    naive, ambient = PAIRS[f"{noise.capitalize()} noise"]
+    rows = [("standard iMF", naive, NAIVE), ("ambient iMF", ambient, AMBIENT)]
+    xs = [float(s) for s in sets]
+    clean = sets["1.0"][0][ARMS[0]]
+    with plt.rc_context({"font.size": 13, "axes.titlesize": 14, "lines.linewidth": 2.6, "lines.markersize": 7}):
+        fig, axes = plt.subplots(1, len(steps), figsize=(4.4 * len(steps), 4.4), sharey=True)
+        for ax, k in zip(axes, steps):
+            ax.axhline(clean[f"{FULL}@{k}"], color=MUTED, linestyle="--", linewidth=1.6, label="iMF on clean data")
+            for name, arm, color in rows:
+                ax.plot(xs, [sets[s][0][arm][f"{FULL}@{k}"] for s in sets], color=color, marker="o", label=name)
+            ax.set_xticks([0, 0.25, 0.5, 0.75, 1.0])
+            ax.set_xlabel("noise level σ")
+            ax.set_title(title(k), fontweight="normal", loc="center")
+        axes[0].set_ylim(0, None)
+        axes[0].set_ylabel("W2 in 64-D (lower is better)")
+        axes[0].legend(loc="upper left", fontsize=12)
+        fig.suptitle(f"{noise.capitalize()} noise, 100,000 training points: W2 against noise level",
+                     x=0.01, ha="left", fontsize=15, fontweight="bold")
+        fig.tight_layout()
+        fig.savefig(out / f"n100k-{noise}-sigma.png")
+        plt.close(fig)
+
+        fig, axes = plt.subplots(len(rows), len(sigmas), figsize=(2.5 * len(sigmas), 2.7 * len(rows)))
+        for i, (name, arm, color) in enumerate(rows):
+            axes[i, 0].set_ylabel(name, fontsize=14, color=color, fontweight="bold")
+            for j, s in enumerate(sigmas):
+                evals, samples = sets[s]
+                scatter(axes[i, j], samples[arm][str(step)][:2048], color, lim=2.6, size=1.6)
+                axes[i, j].text(0.04, 0.04, f"{evals[arm][f'{FULL}@{step}']:.2f}", transform=axes[i, j].transAxes,
+                                fontsize=13, color=INK)
+                if i == 0:
+                    axes[i, j].set_title(f"σ = {s}", fontsize=14, loc="center", fontweight="normal")
+        fig.suptitle(f"{noise.capitalize()} noise: samples at {step} steps (W2 in 64-D in each corner)",
+                     x=0.01, ha="left", fontsize=15, fontweight="bold")
+        fig.tight_layout()
+        fig.savefig(out / f"n100k-{noise}-sigma-samples.png")
+        plt.close(fig)
+
+
 def main(out):
     out.mkdir(parents=True, exist_ok=True)
     for name, spec in SETS.items():
@@ -502,6 +563,11 @@ def main(out):
         for noise in ("gaussian", "uniform"):
             fig_n100k_pair(out, noise)
         print("wrote n100k-gaussian-*.png, n100k-uniform-*.png")
+    if (LOGS / "60627029" / "eval.txt").exists():
+        sets = sweep("-n100k")
+        for noise in ("gaussian", "uniform"):
+            fig_n100k_sweep(out, sets, noise)
+        print("wrote n100k-gaussian-sigma*.png, n100k-uniform-sigma*.png")
 
 
 if __name__ == "__main__":

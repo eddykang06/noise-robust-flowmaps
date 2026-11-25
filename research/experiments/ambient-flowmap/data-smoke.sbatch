@@ -3,12 +3,12 @@
 # classifier) and the FID Inception network into the lasting data root, trains MNIST iMF for
 # 2,000 steps with FID evaluation, then prepares a fake ImageNet (random JPEGs in class
 # folders) through the SD-VAE and trains on it briefly with Inception metrics; finally the
-# full test suite. Memory is an estimate (no comparable job measured yet).
+# full test suite. Memory: 1.5x the CPU smoke peak (60641517, 1.80 GB).
 #SBATCH --partition=gpu,gpu_quad
 #SBATCH --qos=gpuquad_qos
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=6G
+#SBATCH --mem=3G
 #SBATCH --time=01:30:00
 #SBATCH --output=/n/scratch/users/e/edk005/nrfm/slurm/%x-%j.out
 set -euo pipefail
