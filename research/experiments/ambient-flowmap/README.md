@@ -264,8 +264,14 @@ Five arms (brief), seed 42, 75% clean, one $\sigma$ per job (`sweep.sbatch`, `DI
   otherwise the header above; Quadro RTX 8000, 44 GiB, 1 min): peak GPU memory per step, MNIST patch 4 at batch
   32 / 64 / 128 = 9.1 / 17.2 / 33.9 GiB (256 out of memory; patch 2 out of memory from 128), ImageNet
   patch 2 at batch 16 / 32 = 15.0 / 29.6 GiB (64 out of memory). Main's configs set to MNIST patch 4,
-  batch 64 (fits 24 GB) and ImageNet batch 32 (needs 40 GB or more); 6147a1b, not yet pushed. GPU smoke
-  rerun as 60707401 (header of 60704833).
+  batch 64 (fits 24 GB) and ImageNet batch 32 (needs 40 GB or more); 6147a1b, pushed to main after GPU
+  smoke 60707401 (header of 60704833; Quadro RTX 8000, 1 h 14 min, peak 1.54 GB) passed: MNIST 2,000
+  steps and fake ImageNet 50 steps train and score, tests 77/77. MNIST runs at about 1.2 s per step at
+  batch 64 (B/2), so the config's 50,000 steps would take about 17 h. Its 2,000-step EMA samples are
+  noise (FID 2,701, accuracy 10%): EMA 0.9999 still holds 82% of the initial weights at 2,000 steps, so
+  the smoke cannot show learning. Raw-weight check 60712569 (`raw-net-check.sbatch`,
+  `raw_net_check.py`; `--cpus-per-task=2 --mem=2G --time=00:15:00`, otherwise the header above) scores
+  the same checkpoint's non-EMA weights.
   ImageNet waits on the human's Hugging Face access (`ILSVRC/imagenet-1k`). ImageNet latents are also
   256 tokens at patch 2, so B/2 at batch 256 needs a larger GPU than 24 GB.
   Earlier attempts 60641096 (`NRFM_OUT` unset) and 60641323 (out of memory at 5 GB, VAE batch 64) failed.
@@ -457,7 +463,7 @@ GPU nodes by up to 0.012 in $W_2$ (not bitwise reproducible across nodes).
 
 ## Next step
 
-When GPU smoke 60707401 passes, push 6147a1b to main and record it; full-batch ImageNet (256) needs several GPUs, which main does not support yet.
+When raw-weight check 60712569 finishes, record whether 2,000 MNIST steps learn digits; full-batch ImageNet (256) needs several GPUs, which main does not support yet.
 
 ## Blocked on
 
