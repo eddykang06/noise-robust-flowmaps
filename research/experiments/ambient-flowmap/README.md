@@ -241,7 +241,10 @@ Five arms (brief), seed 42, 75% clean, one $\sigma$ per job (`sweep.sbatch`, `DI
   `--mail-type=BEGIN,END`): unit fingerprint and all nine cases (run ids, training sets,
   references) bitwise identical to b9ea442, run ids equal the existing $n = 100{,}000$ runs', CPU tests
   58/58. GPU check 60628326 (`consolidate-check.sbatch`, 50-step training per case, re-score, GPU arm
-  tests; `--time=00:30:00`, otherwise the header above) queued; 60626861 cancelled as larger than needed.
+  tests; `--time=00:30:00`, otherwise the header above) ran as its gpu_requeue duplicate 60636197
+  (60628326 cancelled; Quadro RTX 6000, 12 min) against main c7ddd3e: unit fingerprints, all nine 50-step
+  training runs (weights, EMA, metrics) and the re-score bitwise identical to b9ea442; GPU tests 66 + 6 pass.
+  60626861 cancelled as larger than needed.
 - **Real-data pipeline on main** (human, 2026-11-24): MNIST, ImageNet 256 latents, FID-type metrics
   (c7ddd3e, pushed). CPU check 60639921 (`consolidate-check-cpu.sbatch`, OLD = main 0c1b13f,
   `OLD_MODE=new`): spiral bitwise identical, CPU tests 65/65. CPU smoke 60641517
@@ -253,7 +256,12 @@ Five arms (brief), seed 42, 75% clean, one $\sigma$ per job (`sweep.sbatch`, `DI
   patch 2, 256 tokens, batch 256, fp32) ran out of GPU memory in the first step. Fix on main's
   worktree, not yet pushed: `configs/mnist.yaml` patch size 4 (64 tokens; 8c8de02). Resubmitted as
   60704833 with `--mem=3G` (1.5× the CPU smoke peak), otherwise the header of 60639945
-  (`--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=4 --time=01:30:00`).
+  (`--partition=gpu,gpu_quad --qos=gpuquad_qos --gres=gpu:1 --cpus-per-task=4 --time=01:30:00`):
+  out of memory again, on a 44 GB GPU at patch 4. Batch 256 of B/2 (12 blocks plus 8 auxiliary-head
+  blocks, activations held through the JVP) does not fit one GPU; the iMF paper splits that batch
+  across devices. Memory probe 60706992 (`mem-probe.sbatch`, `mem_probe.py`; one fp32 step at batch
+  32–256, MNIST patch 2 and 4, ImageNet patch 2; `--cpus-per-task=2 --mem=3G --time=00:20:00`,
+  otherwise the header above) sets the batch size main's configs use.
   ImageNet waits on the human's Hugging Face access (`ILSVRC/imagenet-1k`). ImageNet latents are also
   256 tokens at patch 2, so B/2 at batch 256 needs a larger GPU than 24 GB.
   Earlier attempts 60641096 (`NRFM_OUT` unset) and 60641323 (out of memory at 5 GB, VAE batch 64) failed.
@@ -445,7 +453,7 @@ GPU nodes by up to 0.012 in $W_2$ (not bitwise reproducible across nodes).
 
 ## Next step
 
-Rebuild the results page with the $n = 100{,}000$ σ sweep; when GPU check 60636197 (duplicate of 60628326, which was cancelled when it started) and smoke 60704833 finish, record them and push the MNIST fix to main.
+When memory probe 60706992 finishes, set main's MNIST and ImageNet batch sizes from it, rerun the GPU smoke and push to main once it passes.
 
 ## Blocked on
 
