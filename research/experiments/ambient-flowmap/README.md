@@ -261,7 +261,11 @@ Five arms (brief), seed 42, 75% clean, one $\sigma$ per job (`sweep.sbatch`, `DI
   blocks, activations held through the JVP) does not fit one GPU; the iMF paper splits that batch
   across devices. Memory probe 60706992 (`mem-probe.sbatch`, `mem_probe.py`; one fp32 step at batch
   32–256, MNIST patch 2 and 4, ImageNet patch 2; `--cpus-per-task=2 --mem=3G --time=00:20:00`,
-  otherwise the header above) sets the batch size main's configs use.
+  otherwise the header above; NVIDIA 44 GB, 1 min): peak GPU memory per step, MNIST patch 4 at batch
+  32 / 64 / 128 = 9.1 / 17.2 / 33.9 GiB (256 out of memory; patch 2 out of memory from 128), ImageNet
+  patch 2 at batch 16 / 32 = 15.0 / 29.6 GiB (64 out of memory). Main's configs set to MNIST patch 4,
+  batch 64 (fits 24 GB) and ImageNet batch 32 (needs 40 GB or more); 6147a1b, not yet pushed. GPU smoke
+  rerun as 60707401 (header of 60704833).
   ImageNet waits on the human's Hugging Face access (`ILSVRC/imagenet-1k`). ImageNet latents are also
   256 tokens at patch 2, so B/2 at batch 256 needs a larger GPU than 24 GB.
   Earlier attempts 60641096 (`NRFM_OUT` unset) and 60641323 (out of memory at 5 GB, VAE batch 64) failed.
@@ -453,7 +457,7 @@ GPU nodes by up to 0.012 in $W_2$ (not bitwise reproducible across nodes).
 
 ## Next step
 
-When memory probe 60706992 finishes, set main's MNIST and ImageNet batch sizes from it, rerun the GPU smoke and push to main once it passes.
+When GPU smoke 60707401 passes, push 6147a1b to main and record it; full-batch ImageNet (256) needs several GPUs, which main does not support yet.
 
 ## Blocked on
 
