@@ -16,6 +16,7 @@ corruption:
 
 model:
   name: imfDiT_B_2
+  patch_size: 4            # 64 tokens
   input_size: 32
   in_channels: 1
   num_classes: 10
@@ -47,7 +48,7 @@ metric:
 
 train:
   steps: 50000
-  batch_size: 256
+  batch_size: 64          # one fp32 step peaks at 17 GiB (128: 34 GiB), so it fits a 24 GB GPU
   lr: 1.0e-4
   adam_b2: 0.95
   warmup_steps: 1000

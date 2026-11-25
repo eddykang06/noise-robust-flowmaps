@@ -48,7 +48,7 @@ metric:
 
 train:
   steps: 100000
-  batch_size: 256
+  batch_size: 32          # one fp32 step peaks at 30 GiB (16: 15 GiB): needs a GPU of 40 GB or more
   lr: 1.0e-4
   adam_b2: 0.95
   warmup_steps: 1000
