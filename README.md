@@ -4,8 +4,9 @@ Official Implementation of "Noise-Robust Flow Maps."
 
 Clean training data is scarce in science. Noise-robust flow
 maps learn to generate clean samples in one or a few steps, trained directly on noisy
-or corrupted data. Built on improved MeanFlow (Geng et al., 2025) and ambient
-diffusion (Daras et al., 2023).
+or corrupted data. Built on improved MeanFlow (iMF; Geng et al., 2025) and ambient
+diffusion's exact training on Gaussian-noisy data (Daras et al., 2024, "Consistent Diffusion
+Meets Tweedie").
 
 ## Setup
 
@@ -49,10 +50,14 @@ spiral observed in 64 dimensions (the Pixel MeanFlow toy: the data lie on a fixe
 plane, `src/embed.py`); `configs/mnist.yaml` and `configs/imagenet.yaml` train
 class-conditional iMF on MNIST and on ImageNet 256 latents. Noise is added with a corruption
 override, for example `corruption="{name: gaussian, sigma: 1.0, clean_frac: 0.75}"`
-(Gaussian or uniform, `src/corrupt.py`); each sample keeps one fixed noise draw. Spiral runs
+(Gaussian or uniform, `src/corrupt.py`); each sample keeps one fixed noise draw. Standard iMF
+treats noisy samples as clean; ambient iMF trains on each noisy sample only at times above its
+noise level, with a target whose expectation is the clean one
+(`src/objectives/ambient_imf.py`). Spiral runs
 report W2 in all dimensions (`wasserstein2_full`), in the plane (`wasserstein2`) and the RMS
 off the plane (`off_plane_rms`); image runs report FID, precision, recall and the Inception
-score (`src/metrics.py`).
+score (`src/metrics.py`). The image configs fit one GPU: MNIST (batch 64) needs about 17 GB,
+ImageNet (batch 32) about 30 GB, so a 40 GB or larger GPU.
 
 **Class-conditional.** `objective.guidance: true` trains with classifier-free guidance as iMF
 does (a random guidance scale and interval per sample, 10% of labels dropped); the MNIST and
@@ -80,8 +85,9 @@ results exactly on the same hardware.
 python -m scripts.eval <run_dir> --steps 1 2
 ```
 
-**Sample.** Draws samples from a run's checkpoint and saves them to the run directory
-as `samples-<steps>step.pt`.
+**Sample.** Draws samples from a run's checkpoint at guidance scale `--omega` and saves them,
+with their labels (balanced over the classes for conditional runs), to the run directory as
+`samples-<steps>step.pt`.
 
 ```sh
 python -m scripts.sample <run_dir> --n 10000 --steps 1 --omega 1.0 --seed 0
@@ -106,7 +112,7 @@ sbatch --export=ALL,CMD="python -m scripts.train --config configs/imf.yaml slug=
 ## Layout
 
 ```
-configs/   iMF and ambient iMF on the spiral
+configs/   iMF and ambient iMF on the spiral; iMF on MNIST and ImageNet
 src/       datasets, corruption, models, objectives, sampling, metrics, training loop
 scripts/   train, evaluate, sample, plot, prepare data, and the Slurm job template
 tests/     pytest suite; tests/reference holds the upstream iMF reference outputs
