@@ -26,15 +26,16 @@ export NRFM_DATA=/path/to/data          # prepared datasets and metric networks 
 ```sh
 python -m scripts.prepare_data mnist                        # digits + the MNIST metric classifier
 python -m scripts.prepare_data inception                    # FID Inception network
-python -m scripts.prepare_data imagenet-download           # Parquet shards, ~153 GB
-python -m scripts.prepare_data imagenet-encode --split train --shards 0:40   # SD-VAE latents (GPU)
+python -m scripts.prepare_data imagenet-download           # SD-VAE posteriors, 41 GB
 python -m scripts.prepare_data imagenet-assemble --split train
+python -m scripts.prepare_data imagenet-assemble --split val
 ```
 
-ImageNet is ILSVRC-2012 from Hugging Face (`ILSVRC/imagenet-1k`, gated: accept its terms on the
-dataset page, then `hf auth login`). Encoding takes a range of shards (train has 294, val 14;
-default all) and skips shards already done, so it can be split across short GPU jobs; assembling
-needs every shard of the split. Run the same steps with `--split val`.
+ImageNet is ILSVRC-2012 at 256 x 256 in the SD-VAE ft-MSE latent space, set up as iMF does: each
+image's VAE posterior (mean and std, precomputed with iMF's preparation:
+`ChocolateDave/imagenet-256-sd-vae-latents`) is normalized with iMF's per-channel constants, and
+training draws a fresh latent from it every step. The cache is derived from ImageNet, whose terms
+of use (non-commercial research) apply. Noise is added to the normalized latents.
 
 ## Usage
 

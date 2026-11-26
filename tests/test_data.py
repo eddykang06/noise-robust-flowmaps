@@ -114,3 +114,26 @@ def test_embedded_dataset_lies_on_the_plane_and_noise_keeps_its_shape():
     noise = frame(obs.x - clean.x)[obs.sigma > 0] / obs.sigma[obs.sigma > 0, None]
     assert noise.abs().max() <= 3 ** 0.5 + 1e-3
     assert abs(noise.std() - 1.0) < 0.02
+
+
+def test_resample_draws_from_the_posterior_and_is_a_no_op_without_one():
+    batch = Batch(x=torch.randn(64, 4), sigma=torch.zeros(64))
+    state = torch.random.get_rng_state()
+    assert batch.resample() is batch and torch.equal(torch.random.get_rng_state(), state)  # no randomness used
+
+    batch = replace(batch, x_std=torch.rand(64, 4))
+    torch.manual_seed(0)
+    drawn = batch.resample()
+    torch.manual_seed(0)
+    assert torch.equal(drawn.x, batch.x + batch.x_std * torch.randn(64, 4)) and drawn.x_std is None
+
+    many = Batch(x=torch.full((200_000, 2), 3.0), sigma=torch.zeros(200_000), x_std=torch.tensor([0.5, 2.0]).expand(200_000, 2))
+    draws = many.resample().x
+    assert torch.allclose(draws.mean(0), torch.tensor([3.0, 3.0]), atol=0.02)
+    assert torch.allclose(draws.std(0), torch.tensor([0.5, 2.0]), rtol=0.01)
+
+
+def test_corruption_keeps_the_posterior_and_labels(gen):
+    batch = Batch(x=torch.zeros(1000, 4), sigma=torch.zeros(1000), cond=torch.arange(1000), x_std=torch.rand(1000, 4))
+    out = gaussian(batch, gen(0), sigma=0.5, clean_frac=0.5)
+    assert out.x_std is batch.x_std and out.cond is batch.cond and not torch.equal(out.x, batch.x)

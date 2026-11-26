@@ -1,5 +1,7 @@
-"""iMF trained on partly noisy data with an ambient target (ambient diffusion,
-Daras et al., applied to the iMF velocity regression).
+"""iMF trained on partly noisy data with an ambient target: the exact training on Gaussian-noisy
+data of Daras et al., "Consistent Diffusion Meets Tweedie" (ICML 2024), for t above a sample's
+noise level, applied to the iMF velocity regression. Its consistency loss for lower t is not
+used: noisy samples are skipped there and clean samples cover those times.
 
 A sample observed as y = x + sigma * eta (sigma = 0 if clean) sits at path time
 t_n = sigma / (1 + sigma). For t > t_n it is noised to the same marginal as clean

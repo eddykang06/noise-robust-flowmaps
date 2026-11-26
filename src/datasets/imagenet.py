@@ -1,27 +1,29 @@
-"""ImageNet (ILSVRC-2012) at 256 x 256 with its 1,000 class labels, as SD-VAE latents
-`[N, 4, 32, 32]` (the iMF and DiT setup), memory-mapped from disk.
+"""ImageNet (ILSVRC-2012) at 256 x 256 with its 1,000 class labels, in the latent space of the
+SD-VAE ft-MSE, as iMF trains it (github.com/Lyy-iiis/imeanflow: utils/data_util.py, vae_util.py).
 
-Prepared in three steps (scripts/prepare_data.py): `download()` fetches the Parquet shards of
-Hugging Face's ILSVRC/imagenet-1k (gated: accept its terms and `hf auth login` first);
-`encode(split, first, last)` center-crops each image of a range of shards to 256 (ADM
-preprocessing), encodes it with the SD-VAE (ft-EMA) and stores the latent mean times 0.18215,
-the train split also each image flipped, one file per shard, resumably; `assemble(split)`
-concatenates the shards into the memory-mapped training files. Noise is added to the latents. A corrupted training set is computed once,
-in chunks, and cached under <root>/imagenet/observed/, so each sample keeps one fixed noise
-draw. `data.n` takes the first n of a seeded permutation (held in memory); null for all.
-The reference for metrics is class-balanced.
+Each image is stored as its VAE posterior: the mean, normalized per channel by iMF's constants,
+(mean - MEAN) / STD, as `x`, and the posterior std in the same units as `x_std`. Training draws
+a fresh latent x + x_std * eps every step (`Batch.resample`), as iMF samples the posterior; there
+are no flips (iMF has none). Images were ADM center-cropped to 256 before encoding.
+
+The posteriors come precomputed from ChocolateDave/imagenet-256-sd-vae-latents (iMF's preparation:
+Flax SD-VAE ft-MSE, ADM crop, unscaled mean and std; ImageNet-derived, so ImageNet's terms of use
+apply). `download()` fetches it and `assemble(split)` writes the memory-mapped files below.
+
+Noise is added to the normalized posterior mean, once per sample, and cached under
+<root>/imagenet/observed/, so each noisy sample is a fresh latent plus its own fixed noise.
+`data.n` takes the first n of a seeded permutation (held in memory); null for all. The reference
+for metrics is class-balanced posterior means of the validation split.
 """
 
 import hashlib
-import io
 import json
+from dataclasses import replace
 from functools import cache
-from pathlib import Path
 
 import numpy as np
 import pyarrow.parquet as pq
 import torch
-from PIL import Image
 
 from src.config import Config
 from src.data import DEVICE, Batch
@@ -29,12 +31,13 @@ from src.datasets import root
 from src.plots import image_grid
 
 ON_DEVICE = False
-SCALE = 0.18215  # SD-VAE latent scale
-VAE = "stabilityai/sd-vae-ft-ema"
+VAE = "stabilityai/sd-vae-ft-mse"
+CACHE = "ChocolateDave/imagenet-256-sd-vae-latents"
+SPLITS = {"train": "train", "val": "validation"}
+MEAN = np.array([0.86488, -0.27787343, 0.21616915, 0.3738409], np.float32).reshape(4, 1, 1)  # iMF's
+STD = np.array([4.85503674, 5.31922414, 3.93725398, 3.9870003], np.float32).reshape(4, 1, 1)
 CHUNK = 4096   # samples per chunk when caching a corrupted training set
-BATCH = 16     # images per VAE pass
-HF = "ILSVRC/imagenet-1k"
-HF_SPLIT = {"train": "train", "val": "validation"}
+BATCH = 16     # latents per VAE decoder pass
 
 
 @cache
@@ -43,79 +46,40 @@ def vae():
     return AutoencoderKL.from_pretrained(VAE, cache_dir=root() / "weights").eval().to(DEVICE)
 
 
-def center_crop(image: Image.Image, size: int = 256) -> np.ndarray:
-    """ADM's center_crop_arr: halve while large, resize the short side to `size`, crop."""
-    while min(image.size) >= 2 * size:
-        image = image.resize(tuple(s // 2 for s in image.size), resample=Image.BOX)
-    scale = size / min(image.size)
-    image = image.resize(tuple(round(s * scale) for s in image.size), resample=Image.BICUBIC)
-    arr = np.asarray(image.convert("RGB"))
-    top, left = (arr.shape[0] - size) // 2, (arr.shape[1] - size) // 2
-    return arr[top:top + size, left:left + size]
-
-
 def download():
     from huggingface_hub import snapshot_download
-    snapshot_download(HF, repo_type="dataset", local_dir=root() / "imagenet" / "hf",
-                      allow_patterns=[f"data/{name}-*" for name in HF_SPLIT.values()])
-
-
-def shards(split: str) -> list[Path]:
-    return sorted((root() / "imagenet" / "hf" / "data").glob(f"{HF_SPLIT[split]}-*.parquet"))
-
-
-def encoded(split: str, k: int) -> Path:
-    return root() / "imagenet" / "shards" / f"{split}-{k:05d}.npz"
-
-
-@torch.no_grad()
-def encode(split: str, first: int, last: int):
-    """Encodes Parquet shards [first, last) of `split` into one file each, skipping shards
-    already encoded. A file is written whole, so an interrupted job loses only its current shard."""
-    flips = 2 if split == "train" else 1
-    for k, path in enumerate(shards(split)[first:last], first):
-        if encoded(split, k).exists():
-            continue
-        table = pq.read_table(path)
-        images = [row["bytes"] for row in table.column("image").to_pylist()]
-        latents = np.empty((flips, len(images), 4, 32, 32), np.float32)
-        for i in range(0, len(images), BATCH):
-            x = np.stack([center_crop(Image.open(io.BytesIO(b))) for b in images[i:i + BATCH]])
-            x = torch.from_numpy(x).to(DEVICE).permute(0, 3, 1, 2).float() / 127.5 - 1
-            for f in range(flips):
-                latents[f, i:i + len(x)] = (vae().encode(x.flip(3) if f else x).latent_dist.mean * SCALE).cpu().numpy()
-        encoded(split, k).parent.mkdir(parents=True, exist_ok=True)
-        tmp = encoded(split, k).with_suffix(".tmp.npz")
-        np.savez(tmp, latents=latents, labels=table.column("label").to_numpy())
-        tmp.rename(encoded(split, k))
+    snapshot_download(CACHE, repo_type="dataset", local_dir=root() / "imagenet" / "posterior",
+                      allow_patterns=["data/*", "metadata/*"])
 
 
 def assemble(split: str):
-    """All encoded shards of `split` -> <root>/imagenet/{split}_latents.npy (every image in shard
-    order, then for train every flip in the same order) and {split}_labels.npy. The shard files
-    can be deleted afterwards."""
-    files = [encoded(split, k) for k in range(len(shards(split)))]
-    missing = [f.name for f in files if not f.exists()]
-    assert files and not missing, f"not encoded yet: {missing or split}"
-    labels = [np.load(f)["labels"] for f in files]
-    n, flips = sum(map(len, labels)), 2 if split == "train" else 1
+    """The cached posteriors of `split`, in shard order -> <root>/imagenet/{split}_x.npy,
+    {split}_x_std.npy (normalized mean and std) and {split}_labels.npy (written last)."""
+    files = sorted((root() / "imagenet" / "posterior" / "data").glob(f"{SPLITS[split]}-*.parquet"))
+    assert files, f"no cached {split} posteriors: run `prepare_data imagenet-download`"
+    n = sum(pq.ParquetFile(f).metadata.num_rows for f in files)
     out = root() / "imagenet"
-    latents = np.lib.format.open_memmap(out / f"{split}_latents.npy", "w+", np.float32, (flips * n, 4, 32, 32))
-    start = 0
-    for f, y in zip(files, labels):
-        z = np.load(f)["latents"]
-        for k in range(flips):
-            latents[k * n + start:k * n + start + len(y)] = z[k]
-        start += len(y)
-    latents.flush()
-    np.save(out / f"{split}_labels.npy", np.tile(np.concatenate(labels), flips).astype(np.int64))
+    x, x_std = (np.lib.format.open_memmap(out / f"{split}_{name}.npy", "w+", np.float32, (n, 4, 32, 32))
+                for name in ("x", "x_std"))
+    labels, start = [], 0
+    for f in files:
+        table = pq.read_table(f, columns=["image", "label"])
+        posterior = table.column("image").combine_chunks().flatten().flatten().flatten().to_numpy()
+        posterior = posterior.reshape(-1, 8, 32, 32)
+        x[start:start + len(posterior)] = (posterior[:, :4] - MEAN) / STD
+        x_std[start:start + len(posterior)] = posterior[:, 4:] / STD
+        labels.append(table.column("label").to_numpy())
+        start += len(posterior)
+    x.flush()
+    x_std.flush()
+    np.save(out / f"{split}_labels.npy", np.concatenate(labels).astype(np.int64))
 
 
 def load(split: str) -> Batch:
     d = root() / "imagenet"
-    x = torch.from_numpy(np.load(d / f"{split}_latents.npy", mmap_mode="c"))
+    x, x_std = (torch.from_numpy(np.load(d / f"{split}_{name}.npy", mmap_mode="c")) for name in ("x", "x_std"))
     y = torch.from_numpy(np.load(d / f"{split}_labels.npy"))
-    return Batch(x=x, sigma=torch.zeros(len(y)), cond=y)
+    return Batch(x=x, sigma=torch.zeros(len(y)), cond=y, x_std=x_std)
 
 
 def build(cfg: Config, corrupt, gen: torch.Generator) -> Batch:
@@ -131,18 +95,18 @@ def build(cfg: Config, corrupt, gen: torch.Generator) -> Batch:
         x = np.lib.format.open_memmap(path / "x.npy", "w+", np.float32, tuple(clean.x.shape))
         sigma = []
         for i in range(0, len(clean), CHUNK):
-            observed = corrupt(clean[i:i + CHUNK])
+            observed = corrupt(Batch(x=clean.x[i:i + CHUNK], sigma=clean.sigma[i:i + CHUNK]))
             x[i:i + len(observed)] = observed.x.numpy()
             sigma.append(observed.sigma)
         x.flush()
         np.save(path / "sigma.npy", torch.cat(sigma).numpy())  # written last: marks the cache complete
     x = torch.from_numpy(np.load(path / "x.npy", mmap_mode="c"))
-    return Batch(x=x, sigma=torch.from_numpy(np.load(path / "sigma.npy")), cond=clean.cond)
+    return replace(clean, x=x, sigma=torch.from_numpy(np.load(path / "sigma.npy")))
 
 
 def reference(cfg: Config, n: int, gen: torch.Generator) -> Batch:
-    """`n` seeded validation latents, the same number from each class (balanced, as iMF's FID
-    samples), grouped by class."""
+    """`n` seeded validation posterior means, the same number from each class (balanced, as
+    iMF's FID samples), grouped by class."""
     classes = cfg.model["num_classes"]
     assert n % classes == 0, f"metric.n_samples must be a multiple of the {classes} classes"
     val = load("val")
@@ -150,12 +114,14 @@ def reference(cfg: Config, n: int, gen: torch.Generator) -> Batch:
     labels = val.cond[order]
     keep = torch.cat([order[labels == c][:n // classes] for c in range(classes)])
     assert len(keep) == n, "some class has too few validation latents"
-    return val[keep]
+    return replace(val[keep], x_std=None)
 
 
 @torch.no_grad()
 def to_images(x: torch.Tensor) -> torch.Tensor:
-    images = [vae().decode(z.to(DEVICE).float() / SCALE).sample for z in x.split(BATCH)]
+    """Normalized latents -> uint8 images, undoing iMF's normalization before decoding."""
+    mean, std = (torch.from_numpy(a).to(DEVICE) for a in (MEAN, STD))
+    images = [vae().decode(z.to(DEVICE).float() * std + mean).sample for z in x.split(BATCH)]
     return ((torch.cat(images).clamp(-1, 1) + 1) * 127.5).round().to(torch.uint8)
 
 

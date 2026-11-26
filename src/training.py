@@ -135,7 +135,7 @@ def train(cfg: Config):
     stream, start = batches(data, cfg.train["batch_size"]), time.time() - elapsed
     while step < cfg.train["steps"]:
         with torch.autocast("cuda", dtype=dtype, enabled=dtype != torch.float32):
-            loss, logs = loss_fn(net, next(stream).to(device))
+            loss, logs = loss_fn(net, next(stream).to(device).resample())
         opt.zero_grad(set_to_none=True)
         loss.backward()
         opt.step()

@@ -1,14 +1,15 @@
-# iMF on ImageNet 256 as SD-VAE latents (src/datasets/imagenet.py), class-conditional, as in
-# iMF. `slug` is set per run on the command line. Needs `python -m scripts.prepare_data
-# imagenet` for the train and val splits and `... inception`. Objective and optimizer as
-# configs/imf.yaml; iMF-B/2 trains for 240 epochs at batch 256 (~1.2M steps).
+# iMF on ImageNet 256 as SD-VAE ft-MSE latents (src/datasets/imagenet.py), class-conditional, as
+# in iMF. `slug` is set per run on the command line. Needs `python -m scripts.prepare_data`
+# `imagenet-download`, `imagenet-assemble` for the train and val splits, and `inception`.
+# Objective and optimizer as configs/imf.yaml; iMF-B/2 trains for 240 epochs at batch 256
+# (~1.2M steps).
 seed: 42
 out_root: $NRFM_OUT       # run directories; scripts/train.sbatch sets NRFM_OUT
 runs_dir: runs            # <slug>.jsonl evaluation records, relative to the repo root
 
 data:
   name: imagenet
-  n: null                 # all training latents (with flips); an integer takes a seeded subset
+  n: null                 # all 1,281,167 training images; an integer takes a seeded subset
   keep_noisy: true        # false drops corrupted samples (clean-only training)
 
 corruption:

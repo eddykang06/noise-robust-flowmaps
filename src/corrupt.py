@@ -5,6 +5,8 @@ coordinate, Gaussian or uniform; `sigma` records its standard deviation, as if t
 were Gaussian. sigma is either fixed or drawn per sample with sigma^2 ~ U[0, var_max].
 """
 
+from dataclasses import replace
+
 import torch
 
 from src.data import Batch
@@ -26,7 +28,7 @@ def add_noise(batch: Batch, gen: torch.Generator, clean_frac: float, draw_sigma,
     noisy = torch.rand(n, generator=gen) >= clean_frac
     s = noisy.float() * draw_sigma(n, gen)
     x = batch.x + bcast(s, batch.x) * unit_noise(batch.x.shape, gen)
-    return Batch(x=x, sigma=s, mask=batch.mask, cond=batch.cond)
+    return replace(batch, x=x, sigma=s)
 
 
 def fixed(sigma: float):

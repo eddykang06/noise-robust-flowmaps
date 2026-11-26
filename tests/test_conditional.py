@@ -100,11 +100,13 @@ def test_arm_accuracy_counts_samples_on_the_requested_arm():
 def test_imagenet_reference_is_class_balanced_and_seeded(tmp_path, monkeypatch):
     monkeypatch.setenv("NRFM_DATA", str(tmp_path))
     (tmp_path / "imagenet").mkdir()
-    np.save(tmp_path / "imagenet" / "val_latents.npy", np.zeros((40, 4, 32, 32), dtype=np.float32))
+    for name in ("x", "x_std"):
+        np.save(tmp_path / "imagenet" / f"val_{name}.npy", np.zeros((40, 4, 32, 32), dtype=np.float32))
     np.save(tmp_path / "imagenet" / "val_labels.npy", np.arange(40) % 4)
     cfg = load("configs/imagenet.yaml", ["slug=test", "model.num_classes=4", "metric.n_samples=12"])
     ref = reference(cfg)
     assert torch.equal(ref.cond.bincount(), torch.full((4,), 3)) and torch.equal(ref.cond, reference(cfg).cond)
+    assert ref.x_std is None  # the reference is posterior means
     with pytest.raises(AssertionError):
         reference(load("configs/imagenet.yaml", ["slug=test", "model.num_classes=4", "metric.n_samples=10"]))
     with pytest.raises(AssertionError):
