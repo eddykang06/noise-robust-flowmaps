@@ -271,8 +271,8 @@ Five arms (brief), seed 42, 75% clean, one $\sigma$ per job (`sweep.sbatch`, `DI
   noise (FID 2,701, accuracy 10%): EMA 0.9999 still holds 82% of the initial weights at 2,000 steps, so
   the smoke cannot show learning. Not needed (human, 2026-11-25: only the data and training pipelines
   have to work for now, not MNIST quality), so raw-weight check 60712569 was cancelled.
-- **Class-conditional generation on main** (human, 2026-11-26), as iMF does it, in main's worktree,
-  not yet committed. The human chose:
+- **Class-conditional generation on main** (human, 2026-11-26), as iMF does it: a34ba56, pushed to
+  main after the CPU check and before the GPU check (human: push now, confirm later). The human chose:
   - guided ambient iMF with target v_hat + (1 − 1/ω)(v_c − v_u);
   - spiral arms as classes 0 and 1, with an `arm_accuracy` metric;
   - `sampler.omega` as a list, each scale scored under `<metric>@<steps>_w<omega>`;
@@ -293,6 +293,14 @@ Five arms (brief), seed 42, 75% clean, one $\sigma$ per job (`sweep.sbatch`, `DI
     against OLD, and conditional iMF and ambient iMF trained for 4,000 steps on the spiral. Those
     two must reach arm accuracy > 0.9 at 1 and 2 steps, at ω = 1 and 2, and land within half the
     prior's W2. Earlier attempts 60841575 (whole suite) and 60842116 were cancelled while queued.
+- **ImageNet from Hugging Face** (human, 2026-11-26): access granted to `ILSVRC/imagenet-1k`, which
+  ships Parquet shards (JPEG bytes and label per row), 294 for train (146.5 GB) and 14 for validation
+  (6.7 GB). The human chose to read the Parquet files directly rather than unpack them into class
+  folders. Download 60844562 (`download-imagenet.sbatch`; short partition, 4 CPUs, `--mem=2G
+  --time=04:00:00`, `--mail-type=BEGIN,END`) writes to `nrfm-data/imagenet/hf/`; its first submission,
+  60844561, was cancelled because its `--include` syntax was wrong. Main's `prepare_data` is being
+  changed to download, encode shard ranges (resumable, as short GPU jobs) and assemble, in worktree
+  `main-parquet`. `pyarrow` 26.0.1 is now installed in nrfm.
   ImageNet waits on the human's Hugging Face access (`ILSVRC/imagenet-1k`). ImageNet latents are also
   256 tokens at patch 2, so B/2 at batch 256 needs a larger GPU than 24 GB.
   Earlier attempts 60641096 (`NRFM_OUT` unset) and 60641323 (out of memory at 5 GB, VAE batch 64) failed.
@@ -484,7 +492,7 @@ GPU nodes by up to 0.012 in $W_2$ (not bitwise reproducible across nodes).
 
 ## Next step
 
-When GPU check 60842135 passes, commit the class-conditional change to main and push. Then download and prepare ImageNet once the human has Hugging Face access.
+When GPU check 60842135 finishes, record it (fix or revert a34ba56 on main if it fails). Finish ImageNet preparation from Parquet (download 60844562 running).
 
 ## Blocked on
 
