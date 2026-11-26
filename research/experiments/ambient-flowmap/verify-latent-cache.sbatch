@@ -2,7 +2,8 @@
 # Verifies the ImageNet posterior cache against our own SD-VAE ft-MSE encoding of the raw images
 # (verify_latent_cache.py), then assembles main's memory-mapped val and train files from it
 # (`prepare_data imagenet-assemble`), timed. CPU only. Memory: the CPU smoke's VAE encoding
-# (60641517, 1.80 GB) plus a 3,572-row shard of posteriors (0.12 GB) and Arrow buffers.
+# (60641517, 1.80 GB, 4 images per pass) plus a 3,572-row shard of posteriors (0.12 GB) and
+# Arrow buffers; the first run (60846066) encoded 16 at once and ran out of memory at 4 GB.
 #SBATCH --partition=short
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=4G

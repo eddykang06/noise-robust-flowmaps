@@ -317,6 +317,16 @@ Five arms (brief), seed 42, 75% clean, one $\sigma$ per job (`sweep.sbatch`, `DI
     our PyTorch ft-MSE encoding and checks iMF's channel statistics. Then the real-data GPU check
     (`imagenet-run-check.sbatch`; `--mem=3G --time=00:10:00`, 1 sampling step).
   - The obsolete ft-EMA shard check 60845032 was cancelled while queued.
+  - Verification 60846098 (the first run, 60846066, ran out of memory: its script encoded 16
+    images per VAE pass on the CPU; now 4):
+    - rows and labels identical to raw validation shard 0;
+    - our PyTorch ft-MSE posterior mean matches the cache with correlation 1.000000 and max
+      difference 0.25% of the largest value; the std matches to 2e-5;
+    - per-channel std of sampled latents within 2% of iMF's constants.
+
+    Assembled 1,281,167 train (8 min) and 50,000 validation latents, all 1,000 classes. After iMF's
+    normalization the train latents have mean −0.001 and std 1.000. The posterior std is about 1e-4
+    in normalized units, so per-step sampling barely changes the data.
 - **Results page** for both sweeps (human, 2026-11-20): artifact "Ambient iMF Noise Sweep",
   figures from `figures.py` (all eight $\sigma$, both noise types, 64-D and in-plane $W_2$; since
   2026-11-20 also $\sigma = 1.0$ at $n = 10{,}000$ against $n = 100{,}000$, `fig_data_size`).

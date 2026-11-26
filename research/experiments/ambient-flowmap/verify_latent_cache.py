@@ -38,9 +38,9 @@ images = np.stack([center_crop(Image.open(io.BytesIO(raw.column("image")[int(i)]
                    for i in rows])
 x = torch.from_numpy(images).permute(0, 3, 1, 2).float() / 127.5 - 1
 vae = AutoencoderKL.from_pretrained(imagenet.VAE, cache_dir=root() / "weights").eval()
-with torch.no_grad():
-    dist = vae.encode(x).latent_dist
-ours_mean, ours_std = dist.mean.numpy(), dist.std.numpy()
+with torch.no_grad():  # 4 images per pass: 16 at 256 x 256 need several GB on the CPU
+    dists = [vae.encode(chunk).latent_dist for chunk in x.split(4)]
+ours_mean, ours_std = (np.concatenate([getattr(dist, k).numpy() for dist in dists]) for k in ("mean", "std"))
 theirs_mean, theirs_std = posterior[rows, :4], posterior[rows, 4:]
 rel = lambda a, b: np.abs(a - b).max() / np.abs(b).max()
 print(f"mean: max |ours - cache| = {np.abs(ours_mean - theirs_mean).max():.4f} "
