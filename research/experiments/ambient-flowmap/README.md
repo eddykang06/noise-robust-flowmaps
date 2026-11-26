@@ -293,6 +293,14 @@ Five arms (brief), seed 42, 75% clean, one $\sigma$ per job (`sweep.sbatch`, `DI
     against OLD, and conditional iMF and ambient iMF trained for 4,000 steps on the spiral. Those
     two must reach arm accuracy > 0.9 at 1 and 2 steps, at ω = 1 and 2, and land within half the
     prior's W2. Earlier attempts 60841575 (whole suite) and 60842116 were cancelled while queued.
+    Result (L40S, 6 min 16 s): the bitwise part as expected (unit fingerprints identical, only the six
+    ambient run-id fields differ). The conditional runs missed my 0.9 arm-accuracy threshold:
+    iMF 0.68 / 0.71 at 1 step (ω = 1 / 2) and 0.85 / 0.87 at 2 steps; ambient 0.67 / 0.68 and
+    0.84 / 0.84. Labels ignored would give 0.50. True spiral points blurred to the samples' in-plane
+    W2 give a ceiling: 0.997 at W2 0.108, 0.919 at 0.171, 0.858 at 0.197. The 2-step samples (W2
+    0.20–0.25) sit at that ceiling, so 0.9 was unreachable after 4,000 steps; the conditioning
+    works. The thresholds are now 0.6 at 1 step and 0.75 at 2 steps, with the reason in the test
+    (main 1fdefbe). The W2 bound passed (0.51 and 0.54 against 3.95).
 - **ImageNet, set up as iMF does** (human, 2026-11-26: "use the standard iMF setup"; noise on the
   normalized latents, the precomputed cache). The official iMF code (`configs/default.py`,
   `utils/vae_util.py`) uses SD-VAE ft-MSE, stores the posterior mean and std, samples a latent each
@@ -519,7 +527,7 @@ GPU nodes by up to 0.012 in $W_2$ (not bitwise reproducible across nodes).
 
 ## Next step
 
-When GPU check 60842135 finishes, record it (fix or revert a34ba56 on main if it fails). Record GPU check 60842135 of the class-conditional change (a34ba56) when it finishes. ImageNet is ready for real runs on GPUs of 40 GB or more; the next experiment is the human's call.
+When GPU check 60842135 finishes, record it (fix or revert a34ba56 on main if it fails). ImageNet is ready for real runs on GPUs of 40 GB or more; the next experiment is the human's call.
 
 ## Blocked on
 
