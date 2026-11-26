@@ -296,7 +296,8 @@ Five arms (brief), seed 42, 75% clean, one $\sigma$ per job (`sweep.sbatch`, `DI
 - **ImageNet from Hugging Face** (human, 2026-11-26): access granted to `ILSVRC/imagenet-1k`, which
   ships Parquet shards (JPEG bytes and label per row), 294 for train (146.5 GB) and 14 for validation
   (6.7 GB). The human chose to read the Parquet files directly rather than unpack them into class
-  folders. Download 60844562 (`download-imagenet.sbatch`; short partition, 4 CPUs, `--mem=2G
+  folders. Download 60844562 (done in 6 min 44 s: 294 train and 14 validation shards, 143 GiB;
+  `download-imagenet.sbatch`; short partition, 4 CPUs, `--mem=2G
   --time=04:00:00`, `--mail-type=BEGIN,END`) writes to `nrfm-data/imagenet/hf/`; its first submission,
   60844561, was cancelled because its `--include` syntax was wrong. Main 0326d2d (worktree `main-parquet`)
   splits preparation into three steps: `imagenet-download`, `imagenet-encode --split --shards a:b`
