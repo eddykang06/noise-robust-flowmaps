@@ -287,8 +287,12 @@ Five arms (brief), seed 42, 75% clean, one $\sigma$ per job (`sweep.sbatch`, `DI
     training sets and references identical, and only the six ambient run-id fields differ; CPU tests
     75/75. The first run, 60841574, had three failing tests, all test bugs: two old ambient tests
     lacked the new arguments, and one spiral test assumed the wrong arm sign.
-  - GPU check 60841575 (`consolidate-check.sbatch`, same OLD; now `--time=00:45:00`, the whole test
-    suite including conditional training of iMF and ambient iMF to arm accuracy > 0.9) is queued.
+  - GPU check 60842135 (`consolidate-check.sbatch`, same OLD, `TESTS=conditional_run`;
+    `--time=00:15:00`, otherwise the earlier header). The human asked for short checks that queue
+    quickly, so it covers only what the CPU cannot: the nine 50-step training cases, bitwise
+    against OLD, and conditional iMF and ambient iMF trained for 4,000 steps on the spiral. Those
+    two must reach arm accuracy > 0.9 at 1 and 2 steps, at ω = 1 and 2, and land within half the
+    prior's W2. Earlier attempts 60841575 (whole suite) and 60842116 were cancelled while queued.
   ImageNet waits on the human's Hugging Face access (`ILSVRC/imagenet-1k`). ImageNet latents are also
   256 tokens at patch 2, so B/2 at batch 256 needs a larger GPU than 24 GB.
   Earlier attempts 60641096 (`NRFM_OUT` unset) and 60641323 (out of memory at 5 GB, VAE batch 64) failed.
@@ -480,7 +484,7 @@ GPU nodes by up to 0.012 in $W_2$ (not bitwise reproducible across nodes).
 
 ## Next step
 
-When GPU check 60841575 passes, commit the class-conditional change to main and push. Then download and prepare ImageNet once the human has Hugging Face access.
+When GPU check 60842135 passes, commit the class-conditional change to main and push. Then download and prepare ImageNet once the human has Hugging Face access.
 
 ## Blocked on
 
