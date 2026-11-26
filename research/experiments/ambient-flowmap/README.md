@@ -298,9 +298,14 @@ Five arms (brief), seed 42, 75% clean, one $\sigma$ per job (`sweep.sbatch`, `DI
   (6.7 GB). The human chose to read the Parquet files directly rather than unpack them into class
   folders. Download 60844562 (`download-imagenet.sbatch`; short partition, 4 CPUs, `--mem=2G
   --time=04:00:00`, `--mail-type=BEGIN,END`) writes to `nrfm-data/imagenet/hf/`; its first submission,
-  60844561, was cancelled because its `--include` syntax was wrong. Main's `prepare_data` is being
-  changed to download, encode shard ranges (resumable, as short GPU jobs) and assemble, in worktree
-  `main-parquet`. `pyarrow` 26.0.1 is now installed in nrfm.
+  60844561, was cancelled because its `--include` syntax was wrong. Main 0326d2d (worktree `main-parquet`)
+  splits preparation into three steps: `imagenet-download`, `imagenet-encode --split --shards a:b`
+  (per-shard files, skips shards already done, so it runs as short GPU jobs) and
+  `imagenet-assemble`. It is tested with a stand-in encoder; CPU tests (`cpu-tests-main.sbatch`
+  with `TREE=main-parquet`, 60844722) pass 76/76. `pyarrow` 26.0.1 is installed in nrfm and pinned
+  in requirements. Real-shard check 60845032 (`imagenet-check.sbatch`, `imagenet_check.py`; GPU, 4
+  CPUs, `--mem=3G --time=00:20:00`) encodes validation shard 0 into the real data root, times it, and
+  checks labels against the source, round-trip PSNR and a labelled image grid.
   ImageNet waits on the human's Hugging Face access (`ILSVRC/imagenet-1k`). ImageNet latents are also
   256 tokens at patch 2, so B/2 at batch 256 needs a larger GPU than 24 GB.
   Earlier attempts 60641096 (`NRFM_OUT` unset) and 60641323 (out of memory at 5 GB, VAE batch 64) failed.
@@ -492,7 +497,7 @@ GPU nodes by up to 0.012 in $W_2$ (not bitwise reproducible across nodes).
 
 ## Next step
 
-When GPU check 60842135 finishes, record it (fix or revert a34ba56 on main if it fails). Finish ImageNet preparation from Parquet (download 60844562 running).
+When GPU check 60842135 finishes, record it (fix or revert a34ba56 on main if it fails). When real-shard check 60845032 passes, split the encoding of all 308 shards into short GPU jobs sized from its timing, then assemble.
 
 ## Blocked on
 
