@@ -1,9 +1,16 @@
 """MNIST and ImageNet loading, corruption of image-shaped data, and the image metrics, on small
 synthetic files under a temporary $NRFM_DATA (no downloads)."""
 
+import io
+from types import SimpleNamespace
+
 import numpy as np
+import pyarrow as pa
+import pyarrow.parquet as pq
 import pytest
 import torch
+import torch.nn.functional as F
+from PIL import Image
 
 from src.config import load
 from src.corrupt import gaussian
@@ -111,3 +118,46 @@ def test_mnist_run_trains_and_scores(data_root, tmp_path):
     assert (run_dir / "true-vs-generated.png").stat().st_size > 0
     for key in ["fid@1", "precision@2", "recall@1", "is@2", "accuracy@1"]:
         assert f'"{key}"' in record
+
+
+class FakeVAE:
+    """Average-pools 8 x 8 blocks of [R, G, B, R]: 256 x 256 images -> 4 x 32 x 32, commuting with flips."""
+    def encode(self, x):
+        return SimpleNamespace(latent_dist=SimpleNamespace(mean=F.avg_pool2d(torch.cat([x, x[:, :1]], 1), 8)))
+
+
+def test_imagenet_parquet_shards_encode_resumably_and_assemble(data_root, monkeypatch):
+    monkeypatch.setattr(imagenet, "vae", FakeVAE)
+    rng = np.random.default_rng(1)
+    hf = data_root / "imagenet" / "hf" / "data"
+    hf.mkdir(parents=True)
+    labels = {}
+    for name, n in [("train-00000-of-00002", 5), ("train-00001-of-00002", 3), ("validation-00000-of-00001", 4)]:
+        rows = []
+        for _ in range(n):
+            buf = io.BytesIO()
+            Image.fromarray(rng.integers(0, 256, (int(rng.integers(256, 400)), 300, 3), dtype=np.uint8)).save(buf, "PNG")
+            rows.append({"bytes": buf.getvalue(), "path": None})
+        labels[name] = rng.integers(0, 1000, n)
+        pq.write_table(pa.table({"image": rows, "label": labels[name]}), hf / f"{name}.parquet")
+
+    imagenet.encode("train", 0, 1)
+    first = imagenet.encoded("train", 0).stat().st_mtime_ns
+    with pytest.raises(AssertionError):
+        imagenet.assemble("train")  # shard 1 is missing
+    imagenet.encode("train", 0, None)  # resumes: shard 0 is skipped
+    assert imagenet.encoded("train", 0).stat().st_mtime_ns == first
+    imagenet.encode("val", 0, None)
+    for split in ("train", "val"):
+        imagenet.assemble(split)
+
+    train, val = imagenet.load("train"), imagenet.load("val")
+    assert train.x.shape == (16, 4, 32, 32) and val.x.shape == (4, 4, 32, 32)
+    order = np.concatenate([labels["train-00000-of-00002"], labels["train-00001-of-00002"]])
+    assert np.array_equal(train.cond.numpy(), np.tile(order, 2))
+    assert np.array_equal(val.cond.numpy(), labels["validation-00000-of-00001"])
+    assert torch.allclose(train.x[8:], train.x[:8].flip(3), atol=1e-6)  # second half: the flipped images
+    first_image = Image.open(io.BytesIO(pq.read_table(hf / "train-00000-of-00002.parquet")
+                                        .column("image")[0].as_py()["bytes"]))
+    x = torch.from_numpy(np.array(imagenet.center_crop(first_image))).permute(2, 0, 1)[None].float() / 127.5 - 1
+    assert torch.allclose(train.x[0], FakeVAE().encode(x).latent_dist.mean[0] * imagenet.SCALE, atol=1e-6)

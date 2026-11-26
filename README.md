@@ -26,11 +26,15 @@ export NRFM_DATA=/path/to/data          # prepared datasets and metric networks 
 ```sh
 python -m scripts.prepare_data mnist                        # digits + the MNIST metric classifier
 python -m scripts.prepare_data inception                    # FID Inception network
-python -m scripts.prepare_data imagenet --src <train dir> --split train   # SD-VAE latents
-python -m scripts.prepare_data imagenet --src <val dir> --split val
+python -m scripts.prepare_data imagenet-download           # Parquet shards, ~153 GB
+python -m scripts.prepare_data imagenet-encode --split train --shards 0:40   # SD-VAE latents (GPU)
+python -m scripts.prepare_data imagenet-assemble --split train
 ```
 
-ImageNet is ILSVRC-2012, read as one folder of images per class; preparing it needs a GPU.
+ImageNet is ILSVRC-2012 from Hugging Face (`ILSVRC/imagenet-1k`, gated: accept its terms on the
+dataset page, then `hf auth login`). Encoding takes a range of shards (train has 294, val 14;
+default all) and skips shards already done, so it can be split across short GPU jobs; assembling
+needs every shard of the split. Run the same steps with `--split val`.
 
 ## Usage
 
