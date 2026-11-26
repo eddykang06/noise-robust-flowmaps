@@ -293,25 +293,30 @@ Five arms (brief), seed 42, 75% clean, one $\sigma$ per job (`sweep.sbatch`, `DI
     against OLD, and conditional iMF and ambient iMF trained for 4,000 steps on the spiral. Those
     two must reach arm accuracy > 0.9 at 1 and 2 steps, at ω = 1 and 2, and land within half the
     prior's W2. Earlier attempts 60841575 (whole suite) and 60842116 were cancelled while queued.
-- **ImageNet from Hugging Face** (human, 2026-11-26): access granted to `ILSVRC/imagenet-1k`, which
-  ships Parquet shards (JPEG bytes and label per row), 294 for train (146.5 GB) and 14 for validation
-  (6.7 GB). The human chose to read the Parquet files directly rather than unpack them into class
-  folders. Download 60844562 (done in 6 min 44 s: 294 train and 14 validation shards, 143 GiB;
-  `download-imagenet.sbatch`; short partition, 4 CPUs, `--mem=2G
-  --time=04:00:00`, `--mail-type=BEGIN,END`) writes to `nrfm-data/imagenet/hf/`; its first submission,
-  60844561, was cancelled because its `--include` syntax was wrong. Main 0326d2d (worktree `main-parquet`)
-  splits preparation into three steps: `imagenet-download`, `imagenet-encode --split --shards a:b`
-  (per-shard files, skips shards already done, so it runs as short GPU jobs) and
-  `imagenet-assemble`. It is tested with a stand-in encoder; CPU tests (`cpu-tests-main.sbatch`
-  with `TREE=main-parquet`, 60844722) pass 76/76. `pyarrow` 26.0.1 is installed in nrfm and pinned
-  in requirements. Real-shard check 60845032 (`imagenet-check.sbatch`, `imagenet_check.py`; GPU, 4
-  CPUs, `--mem=3G --time=00:20:00`) encodes validation shard 0 into the real data root, times it, and
-  checks labels against the source, round-trip PSNR and a labelled image grid.
-  ImageNet waits on the human's Hugging Face access (`ILSVRC/imagenet-1k`). ImageNet latents are also
-  256 tokens at patch 2, so B/2 at batch 256 needs a larger GPU than 24 GB.
-  Earlier attempts 60641096 (`NRFM_OUT` unset) and 60641323 (out of memory at 5 GB, VAE batch 64) failed.
-  GPU smoke 60639944 / 60639945 (`data-smoke.sbatch`, gpu,gpu_quad and gpu_requeue copies;
-  `--gres=gpu:1 --cpus-per-task=4 --mem=6G --time=01:30:00`) queued.
+- **ImageNet, set up as iMF does** (human, 2026-11-26: "use the standard iMF setup"; noise on the
+  normalized latents, the precomputed cache). The official iMF code (`configs/default.py`,
+  `utils/vae_util.py`) uses SD-VAE ft-MSE, stores the posterior mean and std, samples a latent each
+  step, normalizes per channel ((z - m)/s, s = 3.9-5.3) and uses no flips; main had ft-EMA,
+  mean-only latents x 0.18215 and flips. Main's worktree `main-parquet`, commit c6539c5 (local, not
+  pushed) now:
+  - takes posteriors from ChocolateDave/imagenet-256-sd-vae-latents (Flax ft-MSE, MeanFlow's ADM
+    crop, unscaled mean and std; complete for 1,281,167 train and 50,000 validation rows);
+  - stores normalized mean `x` and std `x_std`, and `Batch.resample` draws x + x_std·eps each step;
+  - adds corruption once to the normalized mean (equal in law to noising each fresh latent).
+
+  The ambient objective's docstring now cites Consistent Diffusion Meets Tweedie (Daras et al.,
+  ICML 2024) and says its consistency loss is not used. Our own Parquet encoding path (0326d2d) is
+  removed. The first ImageNet download (raw images, 60844562: 294 train and 14 validation shards,
+  143 GiB, 6 min 44 s) is kept for verification.
+  - Cache download: 60845969 (`download-latents.sbatch`; short partition, 4 CPUs, `--mem=2G
+    --time=01:00:00`).
+  - CPU check 60846014 (`consolidate-check-cpu.sbatch`, OLD = a34ba56, NEW = `main-parquet`):
+    unit fingerprints and all nine spiral cases identical, 0 differing fields; CPU tests 79/79.
+  - Cache download 60845969 done in 3 min 28 s (294 + 14 shards, 39 GiB). Verification and assembly 60846066 (`verify-latent-cache.sbatch`, `verify_latent_cache.py`;
+    short partition, 4 CPUs, `--mem=4G --time=02:00:00`). It compares 16 cached posteriors with
+    our PyTorch ft-MSE encoding and checks iMF's channel statistics. Then the real-data GPU check
+    (`imagenet-run-check.sbatch`; `--mem=3G --time=00:10:00`, 1 sampling step).
+  - The obsolete ft-EMA shard check 60845032 was cancelled while queued.
 - **Results page** for both sweeps (human, 2026-11-20): artifact "Ambient iMF Noise Sweep",
   figures from `figures.py` (all eight $\sigma$, both noise types, 64-D and in-plane $W_2$; since
   2026-11-20 also $\sigma = 1.0$ at $n = 10{,}000$ against $n = 100{,}000$, `fig_data_size`).
@@ -498,7 +503,7 @@ GPU nodes by up to 0.012 in $W_2$ (not bitwise reproducible across nodes).
 
 ## Next step
 
-When GPU check 60842135 finishes, record it (fix or revert a34ba56 on main if it fails). When real-shard check 60845032 passes, split the encoding of all 308 shards into short GPU jobs sized from its timing, then assemble.
+When GPU check 60842135 finishes, record it (fix or revert a34ba56 on main if it fails). Verify the posterior cache and assemble it; run the real-data GPU check; then push the iMF ImageNet setup to main.
 
 ## Blocked on
 

@@ -17,7 +17,7 @@ set -euo pipefail
 export PATH="$HOME/.conda/envs/nrfm/bin:$PATH"
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 export NRFM_OUT=/n/scratch/users/e/edk005/nrfm
-OLD=${OLD:-/n/scratch/users/e/edk005/nrfm/equiv-before} NEW=/n/scratch/users/e/edk005/nrfm/main-consolidate
+OLD=${OLD:-/n/scratch/users/e/edk005/nrfm/equiv-before} NEW=${NEW:-/n/scratch/users/e/edk005/nrfm/main-consolidate}
 OLD_MODE=${OLD_MODE:-old}  # config layout of OLD: old (research/ configs) or new (configs/imf.yaml)
 D=$SLURM_SUBMIT_DIR/research/experiments/ambient-flowmap
 OUT=/n/scratch/users/e/edk005/nrfm/consolidate-check/$SLURM_JOB_ID && mkdir -p $OUT

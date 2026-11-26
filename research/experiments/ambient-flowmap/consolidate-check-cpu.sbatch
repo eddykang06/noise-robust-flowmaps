@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The CPU part of consolidate-check.sbatch (OLD, OLD_MODE from the environment), for a quick answer while GPUs are scarce:
+# The CPU part of consolidate-check.sbatch (OLD, OLD_MODE, NEW from the environment), for a quick answer while GPUs are scarce:
 # unit fingerprint (models, objectives, sampler), run ids, training sets and references
 # of every case in OLD and NEW, then the CPU tests on NEW. Sized from CPU test job
 # 60211648 (1 min, peak 0.70 GB).
@@ -12,7 +12,7 @@ set -euo pipefail
 export PATH="$HOME/.conda/envs/nrfm/bin:$PATH"
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 export NRFM_OUT=/n/scratch/users/e/edk005/nrfm
-OLD=${OLD:-/n/scratch/users/e/edk005/nrfm/equiv-before} NEW=/n/scratch/users/e/edk005/nrfm/main-consolidate
+OLD=${OLD:-/n/scratch/users/e/edk005/nrfm/equiv-before} NEW=${NEW:-/n/scratch/users/e/edk005/nrfm/main-consolidate}
 OLD_MODE=${OLD_MODE:-old}  # config layout of OLD: old (research/ configs) or new (configs/imf.yaml)
 D=$SLURM_SUBMIT_DIR/research/experiments/ambient-flowmap
 OUT=/n/scratch/users/e/edk005/nrfm/consolidate-check/$SLURM_JOB_ID && mkdir -p $OUT
