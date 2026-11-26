@@ -24,5 +24,6 @@ for T in OLD NEW; do
 done
 cmp $OUT/unit-OLD.json $OUT/unit-NEW.json && echo "UNIT FINGERPRINTS IDENTICAL" || echo "UNIT FINGERPRINTS DIFFER"
 cmp $OUT/cases-OLD.json $OUT/cases-NEW.json && echo "CASES IDENTICAL" || echo "CASES DIFFER"
+python $D/diff_cases.py $OUT/cases-OLD.json $OUT/cases-NEW.json
 grep -o '"run_id_eval2k": "[^"]*"' $OUT/cases-NEW.json
 cd $NEW && python -m pytest -q -rs -m "not gpu"

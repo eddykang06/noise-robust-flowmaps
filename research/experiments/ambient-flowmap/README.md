@@ -271,6 +271,24 @@ Five arms (brief), seed 42, 75% clean, one $\sigma$ per job (`sweep.sbatch`, `DI
   noise (FID 2,701, accuracy 10%): EMA 0.9999 still holds 82% of the initial weights at 2,000 steps, so
   the smoke cannot show learning. Not needed (human, 2026-11-25: only the data and training pipelines
   have to work for now, not MNIST quality), so raw-weight check 60712569 was cancelled.
+- **Class-conditional generation on main** (human, 2026-11-26), as iMF does it, in main's worktree,
+  not yet committed. The human chose:
+  - guided ambient iMF with target v_hat + (1 − 1/ω)(v_c − v_u);
+  - spiral arms as classes 0 and 1, with an `arm_accuracy` metric;
+  - `sampler.omega` as a list, each scale scored under `<metric>@<steps>_w<omega>`;
+  - reference labels at evaluation, class-balanced for ImageNet.
+
+  Conditional sampling follows `objective.guidance`, and `scripts.sample` takes `--omega` and draws
+  balanced labels. `configs/ambient_imf.yaml` gains `cfg_beta`, `class_dropout_prob` and
+  `guidance: false`, which changes ambient run ids only. The checks compare against main 6147a1b
+  (worktree `main-before-cond`):
+  - CPU check 60841856 (`consolidate-check-cpu.sbatch` with `OLD=main-before-cond OLD_MODE=new`,
+    header as before; `diff_cases.py` lists differing fields): unit fingerprints identical, all nine
+    training sets and references identical, and only the six ambient run-id fields differ; CPU tests
+    75/75. The first run, 60841574, had three failing tests, all test bugs: two old ambient tests
+    lacked the new arguments, and one spiral test assumed the wrong arm sign.
+  - GPU check 60841575 (`consolidate-check.sbatch`, same OLD; now `--time=00:45:00`, the whole test
+    suite including conditional training of iMF and ambient iMF to arm accuracy > 0.9) is queued.
   ImageNet waits on the human's Hugging Face access (`ILSVRC/imagenet-1k`). ImageNet latents are also
   256 tokens at patch 2, so B/2 at batch 256 needs a larger GPU than 24 GB.
   Earlier attempts 60641096 (`NRFM_OUT` unset) and 60641323 (out of memory at 5 GB, VAE batch 64) failed.
@@ -462,7 +480,7 @@ GPU nodes by up to 0.012 in $W_2$ (not bitwise reproducible across nodes).
 
 ## Next step
 
-Download and prepare ImageNet once the human has Hugging Face access; full-batch ImageNet (256) needs several GPUs, which main does not support yet.
+When GPU check 60841575 passes, commit the class-conditional change to main and push. Then download and prepare ImageNet once the human has Hugging Face access.
 
 ## Blocked on
 

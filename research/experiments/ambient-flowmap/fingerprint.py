@@ -4,6 +4,7 @@ refactor leaves behaviour bitwise unchanged. Run from a repo root:
 """
 
 import hashlib
+import inspect
 import json
 import sys
 
@@ -47,6 +48,8 @@ cases = [
     ("imf_dit", dit, img, "imf", dict(cfg_beta=1.0, class_dropout_prob=0.1, guidance=True)),
     ("ambient", mlp, noisy, "ambient_imf", dict(t_margin=0.05)),
 ]
+if "guidance" in inspect.signature(OBJECTIVES["ambient_imf"]).parameters:  # trees with guided ambient iMF
+    cases[-1][-1].update(cfg_beta=1.0, class_dropout_prob=0.1, guidance=False)
 for name, m, batch, objective, kw in cases:
     m.zero_grad()
     torch.manual_seed(3)

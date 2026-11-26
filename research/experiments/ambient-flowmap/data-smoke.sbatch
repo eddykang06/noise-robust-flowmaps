@@ -40,7 +40,7 @@ PY
 mkdir -p $OUT/root && mkdir -p $NRFM_DATA/weights && ln -s $NRFM_DATA/weights $OUT/root/weights
 for split in train val; do NRFM_DATA=$OUT/root python -m scripts.prepare_data imagenet --src $OUT/fake/$split --split $split; done
 NRFM_DATA=$OUT/root python -m scripts.train --config configs/imagenet.yaml $RUN train.steps=50 train.eval_every=50 \
-  metric.n_samples=24 sampler.batch=12 model.depth=2 model.aux_head_depth=1 \
+  metric.n_samples=24 sampler.batch=12 model.depth=2 model.aux_head_depth=1 model.num_classes=3 \
   "corruption={name: gaussian, sigma: 0.5, clean_frac: 0.5}"
 tail -n 2 $OUT/data-smoke.jsonl | cut -c1-600
 python -m pytest -rs
