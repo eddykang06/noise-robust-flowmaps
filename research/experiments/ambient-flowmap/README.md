@@ -297,8 +297,8 @@ Five arms (brief), seed 42, 75% clean, one $\sigma$ per job (`sweep.sbatch`, `DI
   normalized latents, the precomputed cache). The official iMF code (`configs/default.py`,
   `utils/vae_util.py`) uses SD-VAE ft-MSE, stores the posterior mean and std, samples a latent each
   step, normalizes per channel ((z - m)/s, s = 3.9-5.3) and uses no flips; main had ft-EMA,
-  mean-only latents x 0.18215 and flips. Main's worktree `main-parquet`, commit c6539c5 (local, not
-  pushed) now:
+  mean-only latents x 0.18215 and flips. Main now (c6539c5, README 6817950, pushed after the
+  checks below):
   - takes posteriors from ChocolateDave/imagenet-256-sd-vae-latents (Flax ft-MSE, MeanFlow's ADM
     crop, unscaled mean and std; complete for 1,281,167 train and 50,000 validation rows);
   - stores normalized mean `x` and std `x_std`, and `Batch.resample` draws x + x_std·eps each step;
@@ -327,6 +327,12 @@ Five arms (brief), seed 42, 75% clean, one $\sigma$ per job (`sweep.sbatch`, `DI
     Assembled 1,281,167 train (8 min) and 50,000 validation latents, all 1,000 classes. After iMF's
     normalization the train latents have mean −0.001 and std 1.000. The posterior std is about 1e-4
     in normalized units, so per-step sampling barely changes the data.
+  - Real-data GPU check 60846467 (`imagenet-run-check.sbatch`; L40S, 1 min 18 s, peak 1.5 GB):
+    - 50 steps on 2,048 training images, 1,022 of them noisy at σ = 0.5, scored on 1,000
+      class-balanced validation latents at 1 step: finite FID, precision, recall and IS;
+    - the decoded reference images are real ImageNet pictures of classes 0–7 in order (tench,
+      goldfish, great white, tiger shark, hammerhead, electric ray, stingray, cock), confirming the
+      labels and the inverse normalization.
 - **Results page** for both sweeps (human, 2026-11-20): artifact "Ambient iMF Noise Sweep",
   figures from `figures.py` (all eight $\sigma$, both noise types, 64-D and in-plane $W_2$; since
   2026-11-20 also $\sigma = 1.0$ at $n = 10{,}000$ against $n = 100{,}000$, `fig_data_size`).
@@ -513,7 +519,7 @@ GPU nodes by up to 0.012 in $W_2$ (not bitwise reproducible across nodes).
 
 ## Next step
 
-When GPU check 60842135 finishes, record it (fix or revert a34ba56 on main if it fails). Verify the posterior cache and assemble it; run the real-data GPU check; then push the iMF ImageNet setup to main.
+When GPU check 60842135 finishes, record it (fix or revert a34ba56 on main if it fails). Record GPU check 60842135 of the class-conditional change (a34ba56) when it finishes. ImageNet is ready for real runs on GPUs of 40 GB or more; the next experiment is the human's call.
 
 ## Blocked on
 
