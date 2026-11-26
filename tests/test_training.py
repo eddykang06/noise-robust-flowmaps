@@ -77,8 +77,25 @@ def test_interrupted_run_resumes_bitwise(tmp, reference_run, monkeypatch):
     assert evaluate(net, cfg, reference(cfg).to("cuda")) == reference_run[-1]
 
 
+COND = ["model.num_classes=2", "objective.guidance=true"]
 GAUSSIAN = "corruption={name: gaussian, sigma: 0.3, clean_frac: 0.75}"
 UNIFORM = "corruption={name: uniform, sigma: 0.3, clean_frac: 0.75}"
+
+
+@pytest.mark.parametrize("name, extra, config", [
+    ("conditional", [], "configs/imf.yaml"),
+    ("ambient-conditional", [GAUSSIAN], "configs/ambient_imf.yaml"),
+])
+def test_conditional_run_follows_the_requested_arm(tmp, name, extra, config):
+    """Trained on arm labels, the samples land on the requested arm, with and without guidance,
+    and on the spiral (the same bound as the unconditional one-step test)."""
+    cfg = run(tmp, name, [*COND, "sampler.omega=[1.0, 2.0]", "train.eval_every=4000", "metric.n_samples=1024", *extra],
+              config)  # one evaluation, on 1,024 samples: keeps the GPU job short
+    last = metrics(tmp, name)[-1]
+    assert min(last[f"arm_accuracy@{k}_w{w}"] for k in (1, 2) for w in (1, 2)) > 0.9, last
+    ref = reference(cfg).x
+    prior = wasserstein2(torch.randn(ref.shape, generator=torch.Generator().manual_seed(6)), ref)
+    assert last["wasserstein2_full@2_w1"] < 0.5 * prior, (last, prior)
 
 
 @pytest.mark.parametrize("name, extra, config", [

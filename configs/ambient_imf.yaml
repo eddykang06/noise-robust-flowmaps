@@ -31,8 +31,11 @@ objective:
   P_mean: -0.4            # official iMF (t, r) sampling
   P_std: 1.0
   data_proportion: 0.5    # share of each batch with r = t
+  cfg_beta: 1.0           # omega density ~ omega^-beta (guidance only)
+  class_dropout_prob: 0.1 # guidance only
   norm_p: 0.0             # plain squared error: keeps the ambient target unbiased
   norm_eps: 0.01
+  guidance: false         # true: class-conditional with classifier-free guidance, as iMF
   t_margin: 0.05          # noisy samples train only at t > sigma / (1 + sigma) + t_margin
 
 sampler:

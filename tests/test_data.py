@@ -22,7 +22,7 @@ def test_batch_indexes_set_fields_and_keeps_unset_ones():
 
 
 def test_spiral_has_unit_variance(gen):
-    var = spiral(200_000, gen(0)).var(0)
+    var = spiral(200_000, gen(0))[0].var(0)
     assert torch.allclose(var, torch.ones(2), atol=0.1), var
 
 

@@ -12,6 +12,7 @@ from src.path import interpolate
 
 A, N = 0.5, 2_000_000
 IMF = dict(P_mean=-0.4, P_std=1.0, data_proportion=0.5, norm_p=1.0, norm_eps=0.01)
+UNGUIDED = dict(cfg_beta=1.0, class_dropout_prob=0.1, guidance=False)
 
 
 def noisy_gaussian(sigma, t, seed=0):
@@ -53,9 +54,9 @@ def mlp():
 def test_loss_equals_imf_on_clean_data():
     batch = Batch(x=torch.randn(256, 2), sigma=torch.zeros(256))
     torch.manual_seed(1)
-    ours, logs = ambient_imf.loss(mlp(), batch, t_margin=0.05, **IMF)
+    ours, logs = ambient_imf.loss(mlp(), batch, t_margin=0.05, **IMF, **UNGUIDED)
     torch.manual_seed(1)
-    ref, _ = imf.loss(mlp(), batch, cfg_beta=1.0, class_dropout_prob=0.1, guidance=False, **IMF)
+    ref, _ = imf.loss(mlp(), batch, **IMF, **UNGUIDED)
     assert logs["valid"] == 1 and torch.allclose(ours, ref, rtol=1e-4)
 
 
@@ -63,7 +64,7 @@ def test_masked_samples_keep_loss_and_gradients_finite():
     net = mlp()
     batch = Batch(x=torch.randn(512, 2), sigma=torch.full((512,), 5.0))  # t_n = 5/6: mostly masked
     torch.manual_seed(2)
-    loss, logs = ambient_imf.loss(net, batch, t_margin=0.05, **IMF)
+    loss, logs = ambient_imf.loss(net, batch, t_margin=0.05, **IMF, **UNGUIDED)
     loss.backward()
     assert 0 < logs["valid"] < 0.5 and torch.isfinite(loss)
     assert all(torch.isfinite(p.grad).all() for p in net.parameters() if p.grad is not None)

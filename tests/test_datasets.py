@@ -74,7 +74,8 @@ def test_sampling_in_batches_matches_one_pass(gen):
     torch.manual_seed(0)
     net = MODELS["mlp"](dim=2, hidden=32, depth=2, aux_head_depth=1, num_classes=0)
     eps = torch.randn(50, 2, generator=gen(1))
-    whole, batched = (draw(net, load("configs/imf.yaml", ["slug=test", *extra]), eps, 2) for extra in ([], ["sampler.batch=7"]))
+    whole, batched = (draw(net, load("configs/imf.yaml", ["slug=test", *extra]), eps, 2, None, 1.0)
+                      for extra in ([], ["sampler.batch=7"]))
     assert torch.allclose(whole, batched, atol=1e-6)
 
 

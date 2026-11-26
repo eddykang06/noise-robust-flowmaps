@@ -1,6 +1,7 @@
 """The toy: a two-armed spiral, scaled to unit variance per coordinate and observed in
 `data.dim` dimensions on a fixed random plane (src/embed.py). Noise is added in the
-plane's frame, before the rotation, so per-coordinate noise keeps its shape in the plane."""
+plane's frame, before the rotation, so per-coordinate noise keeps its shape in the plane.
+Each point's arm is its class label (`model.num_classes: 2` for class-conditional runs)."""
 
 import json
 import math
@@ -17,17 +18,19 @@ from src.plots import save
 ON_DEVICE = True
 
 
-def spiral(n: int, gen: torch.Generator) -> torch.Tensor:
-    """Two-armed spiral with small radial jitter."""
+def spiral(n: int, gen: torch.Generator) -> tuple[torch.Tensor, torch.Tensor]:
+    """Two-armed spiral with small radial jitter, and each point's arm (0 or 1)."""
     t = 3 * math.pi * torch.rand(n, generator=gen).sqrt()
-    arm = torch.randint(0, 2, (n,), generator=gen) * 2 - 1
+    arm = torch.randint(0, 2, (n,), generator=gen)
     r = t + 0.1 * torch.randn(n, generator=gen)
-    xy = arm[:, None] * torch.stack([r * t.cos(), r * t.sin()], 1)
-    return xy / 4.71  # per-coordinate std: sqrt((E[t^2] + 0.01) / 2), E[t^2] = 9 pi^2 / 2
+    xy = (2 * arm - 1)[:, None] * torch.stack([r * t.cos(), r * t.sin()], 1)
+    return xy / 4.71, arm  # per-coordinate std: sqrt((E[t^2] + 0.01) / 2), E[t^2] = 9 pi^2 / 2
 
 
 def sample_clean(n: int, gen: torch.Generator) -> Batch:
-    return Batch(x=spiral(n, gen), sigma=torch.zeros(n))
+    """Clean points labelled by their arm (used only by class-conditional runs)."""
+    x, arm = spiral(n, gen)
+    return Batch(x=x, sigma=torch.zeros(n), cond=arm)
 
 
 def build(cfg: Config, corrupt, gen: torch.Generator) -> Batch:

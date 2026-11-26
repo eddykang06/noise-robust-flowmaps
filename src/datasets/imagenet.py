@@ -6,6 +6,7 @@ the SD-VAE (ft-EMA) and stores the latent mean times 0.18215; the train split al
 each image flipped. Noise is added to the latents. A corrupted training set is computed once,
 in chunks, and cached under <root>/imagenet/observed/, so each sample keeps one fixed noise
 draw. `data.n` takes the first n of a seeded permutation (held in memory); null for all.
+The reference for metrics is class-balanced.
 """
 
 import hashlib
@@ -97,8 +98,16 @@ def build(cfg: Config, corrupt, gen: torch.Generator) -> Batch:
 
 
 def reference(cfg: Config, n: int, gen: torch.Generator) -> Batch:
+    """`n` seeded validation latents, the same number from each class (balanced, as iMF's FID
+    samples), grouped by class."""
+    classes = cfg.model["num_classes"]
+    assert n % classes == 0, f"metric.n_samples must be a multiple of the {classes} classes"
     val = load("val")
-    return val[torch.randperm(len(val), generator=gen)[:n]]
+    order = torch.randperm(len(val), generator=gen)
+    labels = val.cond[order]
+    keep = torch.cat([order[labels == c][:n // classes] for c in range(classes)])
+    assert len(keep) == n, "some class has too few validation latents"
+    return val[keep]
 
 
 @torch.no_grad()

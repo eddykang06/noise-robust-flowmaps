@@ -49,6 +49,14 @@ report W2 in all dimensions (`wasserstein2_full`), in the plane (`wasserstein2`)
 off the plane (`off_plane_rms`); image runs report FID, precision, recall and the Inception
 score (`src/metrics.py`).
 
+**Class-conditional.** `objective.guidance: true` trains with classifier-free guidance as iMF
+does (a random guidance scale and interval per sample, 10% of labels dropped); the MNIST and
+ImageNet configs set it. On the spiral the two arms are the classes:
+`model.num_classes=2 objective.guidance=true`, scored also by `arm_accuracy`. Ambient iMF
+guides its ambient target the same way. Conditional runs sample the reference's labels
+(class-balanced for ImageNet). `sampler.omega` may list guidance scales, for example
+`sampler.omega="[1.0, 2.0, 3.0]"`; each is scored under `<metric>@<steps>_w<omega>`.
+
 **Train.** Trains a model and evaluates it at fixed intervals. `slug` names the experiment.
 
 ```sh
@@ -71,7 +79,7 @@ python -m scripts.eval <run_dir> --steps 1 2
 as `samples-<steps>step.pt`.
 
 ```sh
-python -m scripts.sample <run_dir> --n 10000 --steps 1 --seed 0
+python -m scripts.sample <run_dir> --n 10000 --steps 1 --omega 1.0 --seed 0
 ```
 
 **Plot.** Draws true against generated samples for one or more runs.

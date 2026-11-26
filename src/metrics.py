@@ -4,10 +4,14 @@
 sampler step count, against the clean reference:
 - `wasserstein2` (the spiral): exact W2 in all D dimensions (`wasserstein2_full`), in the
   plane (`wasserstein2`), and the RMS off the plane (`off_plane_rms`, 0 for clean data).
+  Class-conditional runs also get the share of samples on the requested arm, the arm of the
+  nearest reference point in the plane (`arm_accuracy`; higher is better).
 - `fid` (images): Frechet distance (`fid`), precision and recall (Kynkaanniemi et al. 2019,
   k = 3; higher is better), all on the features of `metric.features`, and the
-  classifier's Inception-style score (`is`; higher is better). With `features: mnist` also the
-  accuracy of the classifier on the intended labels (`accuracy`; higher is better).
+  classifier's Inception-style score (`is`; higher is better). Class-conditional runs with
+  `features: mnist` also get the classifier's accuracy on the requested labels (`accuracy`;
+  higher is better).
+Generated samples of a class-conditional run carry the reference's labels, in its order.
 """
 
 from functools import cache
@@ -41,6 +45,10 @@ def spiral_scores(cfg, generated: dict, ref) -> dict:
         if x.shape[1] > 2:
             out[f"{name}_full@{steps}"] = wasserstein2(x, ref.x)
             out[f"off_plane_rms@{steps}"] = framed[:, 2:].square().mean().sqrt().item()
+        if cfg.objective["guidance"]:
+            labels = ref.cond.cpu()
+            nearest = torch.cdist(framed[:, :2].cpu(), plane.cpu()).argmin(1)
+            out[f"arm_accuracy@{steps}"] = (labels[nearest] == labels).float().mean().item()
     return out
 
 
@@ -103,7 +111,7 @@ def image_scores(cfg, generated: dict, ref) -> dict:
         out[f"fid@{steps}"] = frechet(feats, ref_feats)
         out[f"precision@{steps}"], out[f"recall@{steps}"] = precision_recall(ref_feats, feats)
         out[f"is@{steps}"] = class_score(probs)
-        if cfg.metric["features"] == "mnist":
+        if cfg.metric["features"] == "mnist" and cfg.objective["guidance"]:
             out[f"accuracy@{steps}"] = (probs.argmax(1).cpu() == ref.cond.cpu()).float().mean().item()
     return out
 

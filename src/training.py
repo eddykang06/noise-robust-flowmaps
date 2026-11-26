@@ -47,11 +47,18 @@ def reference(cfg: Config) -> Batch:
 
 @torch.no_grad()
 def samples(net, cfg: Config, ref: Batch) -> dict:
-    """Samples for every sampler step count, from the same seeded noise and
-    without touching the training RNG."""
+    """Samples for every sampler step count, from the same seeded noise and without
+    touching the training RNG. Class-conditional runs (`objective.guidance`) sample the
+    reference's labels. A list of guidance scales `sampler.omega` samples each one, keyed
+    "<steps>_w<omega>"; a single scale keys by step count alone."""
     gen = torch.Generator(ref.x.device).manual_seed(cfg.seed)
     eps = torch.randn(ref.x.shape, generator=gen, device=ref.x.device)
-    return {steps: draw(net, cfg, eps, steps, ref.cond) for steps in cfg.sampler["steps"]}
+    y = ref.cond if cfg.objective["guidance"] else None
+    omega = cfg.sampler["omega"]
+    if isinstance(omega, list):
+        return {f"{steps}_w{w:g}": draw(net, cfg, eps, steps, y, w)
+                for steps in cfg.sampler["steps"] for w in omega}
+    return {steps: draw(net, cfg, eps, steps, y, omega) for steps in cfg.sampler["steps"]}
 
 
 def evaluate(net, cfg: Config, ref: Batch) -> dict:
@@ -59,13 +66,13 @@ def evaluate(net, cfg: Config, ref: Batch) -> dict:
     return METRICS[cfg.metric["name"]](cfg, samples(net, cfg, ref), ref)
 
 
-def draw(net, cfg: Config, eps, steps: int, y=None):
-    """Samples from `eps` with the configured sampler and its options, `sampler.batch`
-    noise vectors at a time if set."""
-    options = {k: v for k, v in kwargs(cfg.sampler).items() if k not in ("steps", "batch")}
+def draw(net, cfg: Config, eps, steps: int, y, omega: float):
+    """Samples from `eps` with the configured sampler at guidance scale `omega`, `y` the
+    labels or None for the null class, `sampler.batch` noise vectors at a time if set."""
+    options = {k: v for k, v in kwargs(cfg.sampler).items() if k not in ("steps", "batch", "omega")}
     size = cfg.sampler.get("batch") or len(eps)
     ys = [None] * len(eps.split(size)) if y is None else y.split(size)
-    return torch.cat([SAMPLERS[cfg.sampler["name"]](net, e, steps, c, **options)
+    return torch.cat([SAMPLERS[cfg.sampler["name"]](net, e, steps, c, omega=omega, **options)
                       for e, c in zip(eps.split(size), ys)])
 
 
