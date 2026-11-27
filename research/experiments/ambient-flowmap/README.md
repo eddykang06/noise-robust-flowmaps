@@ -32,8 +32,8 @@ apply to it.
 degrades with $\sigma$ (single seed). At 1 step no arm, clean included, is good: exact iMF's
 one-step map is weak on this toy (Blocked on). The shared code is on main: spiral, MNIST and
 ImageNet 256 (as iMF sets it up), class-conditional generation with guidance, FID-type metrics.
-ImageNet is ready for real runs on GPUs with at least 40 GB. Waiting on the human's choice of the
-next experiment.
+ImageNet is ready for real runs on GPUs with at least 40 GB. The next experiment moves to robot
+policies (human, 2026-11-27).
 
 ### Setup
 
@@ -127,6 +127,10 @@ samples sit at $W_2$ 0.20–0.25. The thresholds are now 0.6 at 1 step and 0.75 
 
 ### Decisions by the human
 
+- 2026-11-27: next, one-step ambient iMF robot policies: first Push-T from state with synthetic
+  action noise of known σ (exact ambient target), then natural low-quality demonstrations
+  (robomimic multi-human tiers), which have no known σ. The brief on origin/eddy still
+  describes only the toy and images.
 - 2026-11-27: the ambient-protein / AlphaFold-database question is dropped. The README is to be
   concise and readable for others (asked 2026-11-26).
 - 2026-11-26: class-conditional generation as iMF does it; ImageNet in the standard iMF setup.
@@ -243,7 +247,9 @@ A slower rise of the 1-step off-plane error is not ambient-specific: clean iMF h
 
 ## Next step
 
-Wait for the human's choice of the next experiment.
+Propose the robotics changes for main (observation-conditioned MLP, Push-T loader and
+`gym-pusht`, a windowed target for data without a known σ, rollout evaluation) with a hypothesis
+and kill criterion for the Push-T experiment; change main only after the human approves.
 
 ## Blocked on
 
