@@ -10,7 +10,7 @@
 # nrfm-agent-host: keeps one tmux session, nrfm-<slug>, per active brief.
 # Submit from the repo root: sbatch research/bin/agent-host.sbatch
 # Ten minutes before the time limit it queues its successor, which starts once
-# this job ends; each agent resumes its conversation with `claude --continue`.
+# this job ends; each agent resumes its latest conversation (research/bin/agent-loop).
 # `scancel` stops it for good.
 set -uo pipefail
 unset TMUX
@@ -25,7 +25,13 @@ others=$(squeue -h -u "$USER" -n nrfm-agent-host -t RUNNING -o %i | grep -vx "$S
 hostname > "$HOME/.nrfm-agent-host"
 trap 'sbatch --dependency=afterany:$SLURM_JOB_ID research/bin/agent-host.sbatch; exit 0' USR1
 
-CLAUDE="claude --dangerously-skip-permissions"
+# Agents run a node-local copy of Claude with updates off: an update elsewhere
+# deletes old versions from the shared home and kills (SIGBUS) every process
+# still running one.
+export DISABLE_AUTOUPDATER=1
+CLAUDE="/tmp/$USER-claude-$SLURM_JOB_ID"
+cp "$(readlink -f "$(command -v claude)")" "$CLAUDE" || exit 1
+trap 'rm -f "$CLAUDE"' EXIT
 LOOP="/loop Continue your direction under research/CLAUDE.md: re-read your brief, check your jobs, advance one step and commit."
 
 start() {
@@ -36,7 +42,7 @@ start() {
   agent=$(tmux new-session -d -P -F '#{pane_id}' -s "nrfm-$s" -c "$wt")
   beat=$(tmux new-window -d -P -F '#{pane_id}' -t "=nrfm-$s:" -n heartbeat -c "$wt")
   tmux send-keys -t "$beat" "$ROOT/research/bin/heartbeat $s" C-m
-  tmux send-keys -t "$agent" "$CLAUDE --continue '$LOOP' || $CLAUDE '$LOOP'" C-m
+  tmux send-keys -t "$agent" "$ROOT/research/bin/agent-loop $CLAUDE '$LOOP'" C-m
 }
 
 workspace() {
