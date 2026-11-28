@@ -59,7 +59,10 @@ running per direction. Those limits are the compute budget: fit the
 experiment within them, prefer short pilot runs, and never split one run
 into chained jobs to exceed them. When a refusal blocks a needed run, record
 it under `## Blocked on` rather than working around it. Do not call `sbatch`
-directly. Record each submission's `#SBATCH` header and job ID under current
+directly. Request host RAM (`--mem`) at about 1.5 times the measured peak of
+the last comparable job (`sacct -j <id> -o MaxRSS`), never a round guess: O2
+lowers the priority of users whose jobs mostly use under half their request.
+Record each submission's `#SBATCH` header and job ID under current
 state so the human can audit it afterwards. Nothing runs on a login node —
 not a short test, not a sanity check. The environment is conda `nrfm`
 (Python 3.11), activated inside the job script. Job output, checkpoints

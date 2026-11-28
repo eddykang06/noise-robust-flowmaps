@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# agent-loop <claude> <prompt>: runs Claude in this worktree, resuming its latest
+# conversation, and restarts it within 30 s whenever it exits, so a crash never
+# leaves a dead agent. Stop an agent by killing its tmux session.
+claude=$1 prompt=$2
+transcripts=~/.claude/projects/$(pwd | sed 's/[^A-Za-z0-9]/-/g')
+while true; do
+  last=$(ls -t "$transcripts"/*.jsonl 2>/dev/null | head -1)
+  "$claude" --dangerously-skip-permissions ${last:+--resume "$(basename "$last" .jsonl)"} "$prompt"
+  rc=$?
+  printf '\e[?1000l\e[?1002l\e[?1003l\e[?1006l\e[?1049l\e[?25h'  # a crash leaves mouse reporting on
+  echo "$(date '+%F %T') claude exited ($rc); restarting in 30 s"
+  sleep 30
+done

@@ -24,7 +24,7 @@ git pull && sbatch research/bin/agent-host.sbatch
 The host writes its node name to `~/.nrfm-agent-host`, then every 5 minutes fetches
 `origin/eddy` and starts a session for each brief marked `status: active`,
 running `new-idea` first if the direction has no worktree. Before its 30-day
-limit it queues its successor; agents resume with `claude --continue`. A second
+limit it queues its successor; agents resume their latest conversation and restart if Claude exits (`agent-loop`). A second
 copy refuses to start. Its log is `.wt/nrfm-agent-host-<jobid>.out`.
 
 ## 2. On Windows (once)
