@@ -247,11 +247,34 @@ A slower rise of the 1-step off-plane error is not ambient-specific: clean iMF h
 
 ## Next step
 
-Propose the robotics changes for main (observation-conditioned MLP, Push-T loader and
-`gym-pusht`, a windowed target for data without a known σ, rollout evaluation) with a hypothesis
-and kill criterion for the Push-T experiment; change main only after the human approves.
+On approval of the Push-T proposal below, add its four pieces to main with tests, then run the
+clean-oracle pilot (one seed, short) before any noisy arm.
 
 ## Blocked on
+
+**Approval of the Push-T experiment (stage 1 of the robotics redirect).**
+
+- *Hypothesis.* With 10% of the Push-T demonstrations clean and the rest corrupted by temporally
+  correlated Gaussian action noise of known covariance, ambient iMF reaches higher mean coverage
+  at 1 step than iMF on the clean 10% alone and than iMF treating all demonstrations as clean
+  (3 seeds, 100 fixed start states).
+- *Kill criterion.* Ambient iMF at 1 step fails to beat both of those arms by more than two seed
+  standard deviations at every noise level tried. A gate precedes it: if iMF on all clean data
+  reaches under 0.7 mean coverage at 2 steps, the limit is one-step policy quality, not noise,
+  and the noisy arms are not run.
+- *Noise.* Actions are min-max normalized as in Diffusion Policy; each chunk (16 steps × 2-D)
+  gets noise $\sigma L\eta$ with $LL^\top$ a squared-exponential kernel over time (length 3
+  steps), $\sigma \in \{0.1, 0.3\}$. Whitening by $L^{-1}$ makes the existing ambient target
+  exact.
+- *Arms.* Clean 10% only; all as clean; ambient; all clean (reference). 1 and 2 steps, 3 seeds.
+- *Changes to main.* (1) an observation embedder in `src/models/mlp.py` (two-step state history,
+  summed into the conditioning as the label embedding is; `guidance: false`); (2) a Push-T
+  loader for Diffusion Policy's replay buffer (about 200 demonstrations) with chunking,
+  normalization and the correlated corruption; (3) rollout evaluation in `gym-pusht`
+  (execute 8 actions, replan, at most 300 steps, max coverage), CPU only; (4) `gym-pusht` and
+  `zarr` in the `nrfm` environment.
+- *Baselines.* `baseline.md` covers only the toy and images; a Push-T comparison needs its own
+  baseline and protocol there, which is the human's to write.
 
 **Late one-step break of ambient iMF at $\sigma = 1.0$, $n = 10{,}000$.** Half the lr, 4× the
 batch or 10× the training points each remove it. Keeping the original data and step size would
